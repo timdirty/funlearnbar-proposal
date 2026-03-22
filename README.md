@@ -1,6 +1,7 @@
 # 樂程坊 STEAM 課程提案系統
 
-> 線上預覽: `https://你的帳號.github.io/funlearnbar-proposal/`
+> 提案網頁: https://timdirty.github.io/funlearnbar-proposal/
+> 管理後台: https://timdirty.github.io/funlearnbar-proposal/admin.html
 
 ## 發布到 GitHub Pages（3 分鐘）
 
@@ -30,8 +31,9 @@
 ```
 funlearnbar-proposal/
 ├── docs/
-│   └── index.html      ← GitHub Pages 入口（提案網頁）
-├── admin.jsx            ← CMS 管理後台（在 Claude.ai 開啟）
+│   ├── index.html       ← 提案網頁（GitHub Pages 入口）
+│   └── admin.html       ← CMS 管理後台（瀏覽器直接操作）
+├── admin.jsx            ← CMS 原始碼（Claude.ai Artifact 版）
 ├── config.json          ← 資料結構定義
 ├── build.py             ← 靜態網頁產生器
 └── README.md            ← 本文件
@@ -40,16 +42,18 @@ funlearnbar-proposal/
 ## 系統架構
 
 ```
-admin.jsx (CMS 後台)  →  config.json  →  build.py  →  docs/index.html
-     ↕                                                      ↓
-window.storage (DB)                                   GitHub Pages
+docs/admin.html (CMS 後台)  →  匯出 config.json  →  build.py  →  docs/index.html
+       ↕                                                              ↓
+  localStorage (DB)                                             GitHub Pages
 ```
 
-### 換學校流程
-1. 在 Claude.ai 開啟 `admin.jsx` 編輯
-2. 匯出 `config.json`
-3. 執行 `python3 build.py` 產生新的 `docs/index.html`
-4. Push 到 GitHub 自動更新
+### 管理後台使用方式
+1. 開啟 https://timdirty.github.io/funlearnbar-proposal/admin.html
+2. 在「學校設定」修改學校名稱、品牌資訊
+3. 在「課程管理」新增 / 編輯 / 開關課程
+4. 在「競賽戰績」管理歷年成績
+5. 點「⬇ JSON」匯出 `config.json`
+6. 資料自動存在瀏覽器 localStorage，重新整理不會遺失
 
 ### 接後端 API
 ```python
