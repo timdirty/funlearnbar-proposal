@@ -2,8 +2,12 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
   <title>樂程坊 STEAM 提案管理系統</title>
+  <meta name="description" content="樂程坊 STEAM 課程提案管理後台 — 編輯課程、競賽戰績、學校設定並匯出提案資料。">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0b0b14">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -11,9 +15,10 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body style="margin:0">
+  <noscript><div style="padding:40px;text-align:center;font-family:sans-serif;color:#999;background:#0b0b14;min-height:100vh">此管理系統需要啟用 JavaScript</div></noscript>
   <div id="root"></div>
   <script type="text/babel" data-type="module">
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef, useMemo } = React;
 
 /* ═══════════════════════════════════════════════════════════
    樂程坊 STEAM 提案管理系統
@@ -84,7 +89,13 @@ const SEED = {
 // ── DB Layer (localStorage) ──
 const db = {
   async get(k) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch { return null; } },
-  async set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  async set(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+    catch (e) {
+      if (e.name === "QuotaExceededError") return "quota";
+      return false;
+    }
+  },
   async del(k) { try { localStorage.removeItem(k); } catch {} },
 };
 
@@ -92,19 +103,19 @@ const db = {
 const iS = { width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.04)", color: "#eee", fontSize: 12, outline: "none", fontFamily: "inherit", transition: ".2s" };
 
 function P({ c, children }) { return <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 5, fontSize: 9, fontWeight: 600, background: c + "15", color: c, border: `1px solid ${c}20`, whiteSpace: "nowrap" }}>{children}</span>; }
-function F({ l, v, fn, m }) { return <div style={{ flex: 1 }}>{l && <label style={{ fontSize: 10, color: "#666", display: "block", marginBottom: 2 }}>{l}</label>}{m ? <textarea value={v} onChange={e => fn(e.target.value)} style={{ ...iS, height: 48, resize: "vertical" }} /> : <input value={v} onChange={e => fn(e.target.value)} style={iS} />}</div>; }
+function F({ l, v, fn, m, ph }) { return <div style={{ flex: 1 }}>{l && <label style={{ fontSize: 10, color: "#888", display: "block", marginBottom: 2 }}>{l}</label>}{m ? <textarea value={v} onChange={e => fn(e.target.value)} placeholder={ph} style={{ ...iS, height: 48, resize: "vertical" }} /> : <input value={v} onChange={e => fn(e.target.value)} placeholder={ph} style={iS} />}</div>; }
 
 // ═══════════════════════════════════════════════════════════
 // TAB: SCHOOL SETTINGS
 // ═══════════════════════════════════════════════════════════
 function TabSchool({ d, set }) {
-  const u = (p, v) => { const c = JSON.parse(JSON.stringify(d)); const k = p.split("."); let o = c; for (let i = 0; i < k.length - 1; i++) o = o[k[i]]; o[k.at(-1)] = v; set(c); };
+  const u = (p, v) => { const c = JSON.parse(JSON.stringify(d)); const k = p.split("."); let o = c; for (let i = 0; i < k.length - 1; i++) { if (!o[k[i]]) o[k[i]] = {}; o = o[k[i]]; } o[k.at(-1)] = v; set(c); };
   const sH = (i, k, v) => { const h = [...d.hi]; h[i] = { ...h[i], [k]: v }; set({ ...d, hi: h }); };
   return <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-    <Sec t="目標學校"><div style={{ display: "flex", gap: 8 }}><F l="學校" v={d.target.school} fn={v => u("target.school", v)} /><F l="部門" v={d.target.dept} fn={v => u("target.dept", v)} /></div></Sec>
+    <Sec t="目標學校"><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><F l="學校" v={d.target.school} fn={v => u("target.school", v)} ph="學校名稱" /><F l="部門" v={d.target.dept} fn={v => u("target.dept", v)} ph="國小部" /></div></Sec>
     <Sec t="首頁 HERO"><div style={{ display: "flex", flexDirection: "column", gap: 6 }}><F l="主標題" v={d.hero.title} fn={v => u("hero.title", v)} /><F l="金色強調" v={d.hero.accent} fn={v => u("hero.accent", v)} /><F l="副標" v={d.hero.sub} fn={v => u("hero.sub", v)} m /></div></Sec>
-    <Sec t="品牌"><div style={{ display: "flex", gap: 8 }}><F l="中文" v={d.brand.name} fn={v => u("brand.name", v)} /><F l="英文" v={d.brand.en} fn={v => u("brand.en", v)} /></div><div style={{ marginTop: 6 }}><F l="Slogan" v={d.brand.slogan} fn={v => u("brand.slogan", v)} /></div></Sec>
-    <Sec t="四大亮點">{d.hi.map((h, i) => <div key={h.id} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}><input value={h.ic} onChange={e => sH(i, "ic", e.target.value)} style={{ ...iS, width: 36, textAlign: "center", fontSize: 16, padding: 3 }} /><F v={h.t} fn={v => sH(i, "t", v)} /><F v={h.d} fn={v => sH(i, "d", v)} /></div>)}</Sec>
+    <Sec t="品牌"><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><F l="中文" v={d.brand.name} fn={v => u("brand.name", v)} /><F l="英文" v={d.brand.en} fn={v => u("brand.en", v)} /></div><div style={{ marginTop: 6 }}><F l="Slogan" v={d.brand.slogan} fn={v => u("brand.slogan", v)} /></div></Sec>
+    <Sec t="四大亮點">{d.hi.map((h, i) => <div key={h.id} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}><input value={h.ic} onChange={e => sH(i, "ic", e.target.value)} style={{ ...iS, width: 36, textAlign: "center", fontSize: 16, padding: 3 }} aria-label={`亮點 ${i+1} 圖示`} /><F v={h.t} fn={v => sH(i, "t", v)} /><F v={h.d} fn={v => sH(i, "d", v)} /></div>)}</Sec>
   </div>;
 }
 
@@ -116,24 +127,25 @@ function TabCourses({ d, set }) {
   const tog = id => set({ ...d, courses: d.courses.map(c => c.id === id ? { ...c, on: !c.on } : c) });
   const uc = (id, k, v) => set({ ...d, courses: d.courses.map(c => c.id === id ? { ...c, [k]: v } : c) });
   const add = gr => { const n = { id: `c${Date.now()}`, nm: "新課程", sb: "", gr, tk: "k", on: true, ds: "", tg: [], cp: [], eq: "" }; set({ ...d, courses: [...d.courses, n] }); setEd(n.id); };
+  const del = id => { if (!confirm(`確定刪除「${d.courses.find(c=>c.id===id)?.nm}」？`)) return; set({ ...d, courses: d.courses.filter(x => x.id !== id) }); setEd(null); };
   return <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
     {GR.map(g => { const gc = d.courses.filter(c => c.gr === g.id); return <div key={g.id}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7 }}><div style={{ width: 7, height: 7, borderRadius: 4, background: g.c }} /><span style={{ fontSize: 12, fontWeight: 700, color: g.c }}>{g.l}</span><span style={{ fontSize: 10, color: "#555" }}>{gc.filter(c => c.on).length}/{gc.length}</span></div>
       {gc.map(c => <div key={c.id} style={{ marginBottom: ed === c.id ? 6 : 3 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 9px", borderRadius: 7, background: c.on ? "rgba(255,255,255,.03)" : "rgba(255,255,255,.008)", border: `1px solid rgba(255,255,255,${c.on ? ".05" : ".02"})`, opacity: c.on ? 1 : .3, transition: ".3s" }}>
-          <div onClick={() => tog(c.id)} style={{ width: 30, height: 16, borderRadius: 8, background: c.on ? G : "#333", cursor: "pointer", position: "relative", flexShrink: 0, transition: ".3s" }}><div style={{ width: 12, height: 12, borderRadius: 6, background: "#fff", position: "absolute", top: 2, left: c.on ? 16 : 2, transition: ".25s" }} /></div>
+          <div onClick={() => tog(c.id)} onKeyDown={e => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), tog(c.id))} role="switch" aria-checked={c.on} aria-label={`${c.nm} 開關`} tabIndex={0} style={{ width: 30, height: 16, borderRadius: 8, background: c.on ? G : "#333", cursor: "pointer", position: "relative", flexShrink: 0, transition: ".3s" }}><div style={{ width: 12, height: 12, borderRadius: 6, background: "#fff", position: "absolute", top: 2, left: c.on ? 16 : 2, transition: ".25s" }} /></div>
           <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 600, color: c.on ? "#eee" : "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nm}</div><div style={{ fontSize: 10, color: "#555" }}>{c.sb}</div></div>
-          <P c={TK[c.tk].c}>{TK[c.tk].ic} {TK[c.tk].n}</P>
+          <P c={TK[c.tk]?.c || "#888"}>{TK[c.tk]?.ic} {TK[c.tk]?.n}</P>
           {c.cp.length > 0 && <P c={G}>🏆{c.cp.length}</P>}
-          <button onClick={() => setEd(ed === c.id ? null : c.id)} style={{ background: "none", border: "none", color: ed === c.id ? G : "#555", cursor: "pointer", fontSize: 12 }}>{ed === c.id ? "▲" : "✎"}</button>
+          <button onClick={() => setEd(ed === c.id ? null : c.id)} aria-label={ed === c.id ? "收合編輯" : `編輯 ${c.nm}`} style={{ background: "none", border: "none", color: ed === c.id ? G : "#555", cursor: "pointer", fontSize: 12 }}>{ed === c.id ? "▲" : "✎"}</button>
         </div>
-        {ed === c.id && <div style={{ padding: "10px 12px", marginLeft: 37, marginTop: 3, borderRadius: 7, background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.04)", display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ display: "flex", gap: 6 }}><F l="名稱" v={c.nm} fn={v => uc(c.id, "nm", v)} /><F l="副標" v={c.sb} fn={v => uc(c.id, "sb", v)} /></div>
+        {ed === c.id && <div style={{ padding: "10px 12px", marginLeft: 0, marginTop: 3, borderRadius: 7, background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.04)", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><F l="名稱" v={c.nm} fn={v => uc(c.id, "nm", v)} /><F l="副標" v={c.sb} fn={v => uc(c.id, "sb", v)} /></div>
           <F l="說明" v={c.ds} fn={v => uc(c.id, "ds", v)} m />
-          <div style={{ display: "flex", gap: 6 }}><div style={{ width: 80 }}><label style={{ fontSize: 10, color: "#666", display: "block", marginBottom: 2 }}>路線</label><select value={c.tk} onChange={e => uc(c.id, "tk", e.target.value)} style={iS}>{Object.entries(TK).map(([k, v]) => <option key={k} value={k}>{v.n}</option>)}</select></div><F l="器材" v={c.eq} fn={v => uc(c.id, "eq", v)} /></div>
-          <F l="標籤（逗號）" v={c.tg.join(", ")} fn={v => uc(c.id, "tg", v.split(",").map(s => s.trim()).filter(Boolean))} />
-          <F l="對接競賽（逗號）" v={c.cp.join(", ")} fn={v => uc(c.id, "cp", v.split(",").map(s => s.trim()).filter(Boolean))} />
-          <button onClick={() => { set({ ...d, courses: d.courses.filter(x => x.id !== c.id) }); setEd(null); }} style={{ alignSelf: "flex-start", padding: "4px 10px", borderRadius: 5, border: "none", background: "rgba(200,50,50,.08)", color: "#e55", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>刪除</button>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><div style={{ width: 80, flexShrink: 0 }}><label style={{ fontSize: 10, color: "#888", display: "block", marginBottom: 2 }}>路線</label><select value={c.tk} onChange={e => uc(c.id, "tk", e.target.value)} aria-label="路線" style={iS}>{Object.entries(TK).map(([k, v]) => <option key={k} value={k}>{v.n}</option>)}</select></div><F l="器材" v={c.eq} fn={v => uc(c.id, "eq", v)} /></div>
+          <F l="標籤（逗號分隔）" v={c.tg.join(", ")} fn={v => uc(c.id, "tg", v.split(",").map(s => s.trim()).filter(Boolean))} />
+          <F l="對接競賽（逗號分隔）" v={c.cp.join(", ")} fn={v => uc(c.id, "cp", v.split(",").map(s => s.trim()).filter(Boolean))} />
+          <button onClick={() => del(c.id)} style={{ alignSelf: "flex-start", padding: "4px 10px", borderRadius: 5, border: "none", background: "rgba(200,50,50,.08)", color: "#e55", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>刪除此課程</button>
         </div>}
       </div>)}
       <button onClick={() => add(g.id)} style={{ width: "100%", marginTop: 3, padding: "6px 0", borderRadius: 6, border: `1px dashed ${G}20`, background: `${G}05`, color: G, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>+ 新增</button>
@@ -147,22 +159,23 @@ function TabCourses({ d, set }) {
 function TabRecords({ d, set }) {
   const [ed, setEd] = useState(null);
   const ur = (id, k, v) => set({ ...d, recs: d.recs.map(r => r.id === id ? { ...r, [k]: v } : r) });
+  const del = id => { if (!confirm("確定刪除此戰績？")) return; set({ ...d, recs: d.recs.filter(x => x.id !== id) }); };
   return <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
     {[1, 2, 3].map(era => { const items = d.recs.filter(r => r.era === era); return <div key={era}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}><div style={{ width: 16, height: 2, background: G, borderRadius: 1 }} /><span style={{ fontSize: 12, fontWeight: 700, color: "#eee" }}>{ERAS[era]}</span><P c={G}>{items.length}</P></div>
-      {items.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 7px", borderRadius: 5, background: "rgba(255,255,255,.02)", borderLeft: `2px solid ${RT[r.tp].c}40`, marginBottom: 2 }}>
+      {items.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 7px", borderRadius: 5, background: "rgba(255,255,255,.02)", borderLeft: `2px solid ${RT[r.tp]?.c || "#888"}40`, marginBottom: 2, flexWrap: "wrap" }}>
         {ed === r.id ? <div style={{ flex: 1, display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
-          <input value={r.yr} onChange={e => ur(r.id, "yr", e.target.value)} style={{ ...iS, width: 42, padding: 3, fontSize: 10 }} placeholder="年" />
-          <input value={r.ev} onChange={e => ur(r.id, "ev", e.target.value)} style={{ ...iS, flex: 1, padding: 3, fontSize: 10, minWidth: 100 }} placeholder="賽事" />
-          <input value={r.rk} onChange={e => ur(r.id, "rk", e.target.value)} style={{ ...iS, width: 72, padding: 3, fontSize: 10 }} placeholder="成績" />
-          <select value={r.tp} onChange={e => ur(r.id, "tp", e.target.value)} style={{ ...iS, width: 50, padding: 3, fontSize: 10 }}>{Object.entries(RT).map(([k, v]) => <option key={k} value={k}>{v.e}</option>)}</select>
-          <button onClick={() => setEd(null)} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: `${G}18`, color: G, cursor: "pointer", fontSize: 11 }}>✓</button>
+          <input value={r.yr} onChange={e => ur(r.id, "yr", e.target.value)} style={{ ...iS, width: 42, padding: 3, fontSize: 10 }} placeholder="年" aria-label="年度" />
+          <input value={r.ev} onChange={e => ur(r.id, "ev", e.target.value)} style={{ ...iS, flex: 1, padding: 3, fontSize: 10, minWidth: 100 }} placeholder="賽事" aria-label="賽事名稱" />
+          <input value={r.rk} onChange={e => ur(r.id, "rk", e.target.value)} style={{ ...iS, width: 72, padding: 3, fontSize: 10 }} placeholder="成績" aria-label="成績" />
+          <select value={r.tp} onChange={e => ur(r.id, "tp", e.target.value)} aria-label="獎項類型" style={{ ...iS, width: 50, padding: 3, fontSize: 10 }}>{Object.entries(RT).map(([k, v]) => <option key={k} value={k}>{v.e}</option>)}</select>
+          <button onClick={() => setEd(null)} aria-label="完成編輯" style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: `${G}18`, color: G, cursor: "pointer", fontSize: 11 }}>✓</button>
         </div> : <>
-          <span style={{ fontSize: 10, color: "#777", fontWeight: 600, minWidth: 28 }}>{r.yr}</span>
+          <span style={{ fontSize: 10, color: "#999", fontWeight: 600, minWidth: 28 }}>{r.yr}</span>
           <span style={{ flex: 1, fontSize: 11, color: "#bbb" }}>{r.ev}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: RT[r.tp].c, whiteSpace: "nowrap" }}>{RT[r.tp].e} {r.rk}</span>
-          <button onClick={() => setEd(r.id)} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 11 }}>✎</button>
-          <button onClick={() => set({ ...d, recs: d.recs.filter(x => x.id !== r.id) })} style={{ background: "none", border: "none", color: "#442", cursor: "pointer", fontSize: 11 }}>×</button>
+          <span style={{ fontSize: 10, fontWeight: 700, color: RT[r.tp]?.c || "#888", whiteSpace: "nowrap" }}>{RT[r.tp]?.e} {r.rk}</span>
+          <button onClick={() => setEd(r.id)} aria-label={`編輯 ${r.ev}`} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 11 }}>✎</button>
+          <button onClick={() => del(r.id)} aria-label={`刪除 ${r.ev}`} style={{ background: "none", border: "none", color: "#442", cursor: "pointer", fontSize: 11 }}>×</button>
         </>}
       </div>)}
       <button onClick={() => { const n = { id: `r${Date.now()}`, yr: "", ev: "", rk: "", tp: "gold", era }; set({ ...d, recs: [...d.recs, n] }); setEd(n.id); }} style={{ width: "100%", marginTop: 3, padding: "5px 0", borderRadius: 5, border: `1px dashed ${G}15`, background: `${G}04`, color: G, fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>+ 新增</button>
@@ -174,10 +187,10 @@ function TabRecords({ d, set }) {
 // TAB: PREVIEW
 // ═══════════════════════════════════════════════════════════
 function TabPreview({ d }) {
-  const on = d.courses.filter(c => c.on);
-  const golds = d.recs.filter(r => r.tp === "gold").length;
-  const usedG = GR.filter(g => on.some(c => c.gr === g.id));
-  const usedT = [...new Set(on.map(c => c.tk))];
+  const on = useMemo(() => d.courses.filter(c => c.on), [d.courses]);
+  const golds = useMemo(() => d.recs.filter(r => r.tp === "gold").length, [d.recs]);
+  const usedG = useMemo(() => GR.filter(g => on.some(c => c.gr === g.id)), [on]);
+  const usedT = useMemo(() => [...new Set(on.map(c => c.tk))], [on]);
 
   return <div style={{ display: "flex", flexDirection: "column", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(255,255,255,.06)", boxShadow: "0 16px 48px rgba(0,0,0,.35)" }}>
     {/* HERO */}
@@ -198,7 +211,7 @@ function TabPreview({ d }) {
     <div style={{ padding: "20px 22px 14px", background: "#faf9f6" }}>
       <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 3, color: G, marginBottom: 4 }}>LEARNING TRACKS</div>
       <div style={{ fontSize: 16, fontWeight: 800, color: INK, marginBottom: 12, fontFamily: "Outfit, Noto Sans TC" }}>三大路線 × 跨年級銜接</div>
-      {Object.entries(TK).map(([tk, meta]) => { const tc = on.filter(c => c.tk === tk).sort((a, b) => GR.findIndex(g => g.id === a.gr) - GR.findIndex(g => g.id === b.gr)); if (!tc.length) return null; return <div key={tk} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, padding: "8px 12px", borderRadius: 8, background: "#fff", border: "1px solid #eee" }}>
+      {Object.entries(TK).map(([tk, meta]) => { const tc = on.filter(c => c.tk === tk).sort((a, b) => GR.findIndex(g => g.id === a.gr) - GR.findIndex(g => g.id === b.gr)); if (!tc.length) return null; return <div key={tk} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, padding: "8px 12px", borderRadius: 8, background: "#fff", border: "1px solid #eee", flexWrap: "wrap" }}>
         <div style={{ width: 24, height: 24, borderRadius: 6, background: meta.c + "10", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{meta.ic}</div>
         <span style={{ fontSize: 10, fontWeight: 700, color: meta.c, minWidth: 44, letterSpacing: 1 }}>{meta.n}</span>
         <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>{tc.map((c, i) => <span key={c.id} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><span style={{ fontSize: 11, fontWeight: 600, color: INK }}>{c.nm}</span><span style={{ fontSize: 7, color: "#aaa", padding: "0 4px", borderRadius: 3, background: "#f5f5f0" }}>{GR.find(g => g.id === c.gr)?.l}</span>{i < tc.length - 1 && <span style={{ color: meta.c, fontSize: 10, margin: "0 1px", fontWeight: 700 }}>→</span>}</span>)}</div>
@@ -207,7 +220,7 @@ function TabPreview({ d }) {
     {/* GRADES */}
     {GR.map((g, gi) => { const gc = on.filter(c => c.gr === g.id); if (!gc.length) return null; return <div key={g.id} style={{ padding: "16px 22px", background: gi % 2 === 0 ? "#faf9f6" : "#fff" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 6, background: TK[gc[0]?.tk]?.bg || "#f5f5f5", marginBottom: 10 }}><div style={{ width: 8, height: 8, borderRadius: 4, background: g.c, boxShadow: `0 0 6px ${g.c}` }} /><span style={{ fontSize: 10, fontWeight: 700, color: g.c, letterSpacing: 1 }}>{g.l}</span><span style={{ fontSize: 8, color: "#999" }}>{g.en}</span></div>
-      <div style={{ display: "grid", gridTemplateColumns: gc.length >= 3 ? "1fr 1fr 1fr" : gc.length === 2 ? "1fr 1fr" : "1fr", gap: 8 }}>{gc.map(c => <div key={c.id} style={{ borderRadius: 10, overflow: "hidden", background: "#fff", border: "1px solid #e8e8e2", boxShadow: "0 1px 4px rgba(0,0,0,.03)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: gc.length >= 3 ? "repeat(auto-fill,minmax(160px,1fr))" : gc.length === 2 ? "1fr 1fr" : "1fr", gap: 8 }}>{gc.map(c => <div key={c.id} style={{ borderRadius: 10, overflow: "hidden", background: "#fff", border: "1px solid #e8e8e2", boxShadow: "0 1px 4px rgba(0,0,0,.03)" }}>
         <div style={{ height: 4, background: `linear-gradient(90deg,${TK[c.tk].c},${TK[c.tk].c}88)` }} />
         <div style={{ padding: "10px 12px" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: INK, fontFamily: "Outfit, Noto Sans TC" }}>{c.nm}</div>
@@ -224,7 +237,7 @@ function TabPreview({ d }) {
       <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", marginBottom: 12, fontFamily: "Outfit, Noto Sans TC" }}>歷年競賽實績</div>
       {[1, 2, 3].map(era => { const items = d.recs.filter(r => r.era === era); if (!items.length) return null; return <div key={era} style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: "#fff", marginBottom: 5 }}><span style={{ display: "inline-block", width: 14, height: 2, background: G, borderRadius: 1, verticalAlign: "middle", marginRight: 5 }} />{ERAS[era]}</div>
-        {items.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 5, background: "rgba(255,255,255,.02)", borderLeft: `2px solid ${RT[r.tp].c}40`, marginBottom: 1 }}><span style={{ fontSize: 9, color: "#777", fontWeight: 600, minWidth: 26 }}>{r.yr}</span><span style={{ flex: 1, fontSize: 10, color: "rgba(255,255,255,.6)" }}>{r.ev}</span><span style={{ fontSize: 9, fontWeight: 700, color: RT[r.tp].c, whiteSpace: "nowrap" }}>{RT[r.tp].e} {r.rk}</span></div>)}
+        {items.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 5, background: "rgba(255,255,255,.02)", borderLeft: `2px solid ${RT[r.tp]?.c || "#888"}40`, marginBottom: 1 }}><span style={{ fontSize: 9, color: "#777", fontWeight: 600, minWidth: 26 }}>{r.yr}</span><span style={{ flex: 1, fontSize: 10, color: "rgba(255,255,255,.6)" }}>{r.ev}</span><span style={{ fontSize: 9, fontWeight: 700, color: RT[r.tp]?.c || "#888", whiteSpace: "nowrap" }}>{RT[r.tp]?.e} {r.rk}</span></div>)}
       </div>; })}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.05)" }}>{[{ v: d.recs.length, l: "累計獎項" }, { v: golds, l: "第一名" }, { v: "16", l: "年深耕" }].map((s, i) => <div key={i} style={{ textAlign: "center", padding: "10px 4px", borderRadius: 8, background: `${G}08`, border: `1px solid ${G}10` }}><div style={{ fontFamily: "Outfit", fontSize: 18, fontWeight: 800, color: G2 }}>{s.v}</div><div style={{ fontSize: 8, color: "rgba(255,255,255,.35)", marginTop: 2 }}>{s.l}</div></div>)}</div>
     </div>
@@ -249,7 +262,16 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  const [mobile, setMobile] = useState(window.innerWidth < 640);
   const tm = useRef(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width:640px)");
+    const h = e => setMobile(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
 
   useEffect(() => { (async () => {
     let list = await db.get("schools");
@@ -257,58 +279,108 @@ function App() {
     setSchools(list); const cfg = await db.get(list[0].id); setD(cfg || SEED); setSid(list[0].id); setLoading(false);
   })(); }, []);
 
-  useEffect(() => { if (!sid || !d || loading) return; clearTimeout(tm.current); tm.current = setTimeout(async () => { setSaving(true); await db.set(sid, d); setSaving(false); }, 500); }, [d]);
+  useEffect(() => {
+    if (!sid || !d || loading) return;
+    clearTimeout(tm.current);
+    tm.current = setTimeout(async () => {
+      setSaving(true);
+      const res = await db.set(sid, d);
+      setSaving(false);
+      if (res === "quota") flash("⚠ 儲存空間已滿，請匯出 JSON 備份");
+      else if (res === false) flash("⚠ 儲存失敗");
+    }, 500);
+    return () => clearTimeout(tm.current);
+  }, [d]);
 
-  const flash = m => { setToast(m); setTimeout(() => setToast(null), 2000); };
-  const addSchool = async () => { const n = prompt("學校名稱："); if (!n) return; const id = "s" + Date.now(); const nl = [...schools, { id, name: n }]; const nc = { ...SEED, target: { school: n, dept: "" } }; await db.set("schools", nl); await db.set(id, nc); setSchools(nl); setSid(id); setD(nc); flash("✓ " + n); };
-  const swSchool = async id => { setLoading(true); setD(await db.get(id) || SEED); setSid(id); setLoading(false); };
-  const delSchool = async id => { if (schools.length < 2) return flash("至少保留一校"); if (!confirm("確定刪除？")) return; await db.del(id); const nl = schools.filter(s => s.id !== id); await db.set("schools", nl); setSchools(nl); if (sid === id) swSchool(nl[0].id); flash("✓ 已刪除"); };
-  const expJSON = () => { const b = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `${d.target.school}_config.json`; a.click(); flash("✓ 已匯出"); };
-  const resetD = async () => { if (!confirm("重設為預設？")) return; setD(SEED); flash("✓ 已重設"); };
+  const flash = m => { setToast(m); setTimeout(() => setToast(null), 2500); };
+  const addSchool = async () => { const n = prompt("學校名稱："); if (!n?.trim()) return; const name = n.trim().slice(0, 50); const id = "s" + Date.now(); const nl = [...schools, { id, name }]; const nc = { ...SEED, target: { school: name, dept: "" } }; await db.set("schools", nl); await db.set(id, nc); setSchools(nl); setSid(id); setD(nc); flash("✓ " + name); };
+  const swSchool = async id => { setLoading(true); const cfg = await db.get(id); setD(cfg || SEED); setSid(id); setLoading(false); };
+  const delSchool = async id => { if (schools.length < 2) return flash("至少保留一校"); if (!confirm("確定刪除此學校所有資料？")) return; await db.del(id); const nl = schools.filter(s => s.id !== id); await db.set("schools", nl); setSchools(nl); if (sid === id) swSchool(nl[0].id); flash("✓ 已刪除"); };
+
+  const expJSON = () => { const b = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `${d.target.school || "proposal"}_config.json`; a.click(); URL.revokeObjectURL(a.href); flash("✓ 已匯出 JSON"); };
+
+  const impJSON = e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.brand || !data.courses || !data.target) throw new Error("invalid");
+        setD(data);
+        flash("✓ 已匯入 " + (data.target.school || "JSON"));
+      } catch { flash("⚠ JSON 格式不正確"); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const resetD = async () => { if (!confirm("重設為預設資料？目前修改將遺失。")) return; setD(SEED); flash("✓ 已重設"); };
 
   if (loading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: INK, fontFamily: "'Noto Sans TC',sans-serif" }}><style>{css}</style><div style={{ width: 24, height: 24, border: `2px solid ${G}`, borderTopColor: "transparent", borderRadius: 12, animation: "spin .7s linear infinite" }} /></div>;
 
-  const TABS = [{ id: "preview", ic: "👁", lb: "即時預覽" }, { id: "school", ic: "🏫", lb: "學校設定" }, { id: "courses", ic: "📚", lb: "課程管理" }, { id: "records", ic: "🏆", lb: "競賽戰績" }];
+  const TABS = [{ id: "preview", ic: "👁", lb: "預覽" }, { id: "school", ic: "🏫", lb: "學校" }, { id: "courses", ic: "📚", lb: "課程" }, { id: "records", ic: "🏆", lb: "戰績" }];
 
   return <div style={{ minHeight: "100vh", background: INK, fontFamily: "'Noto Sans TC','Outfit',sans-serif", color: "#ddd", display: "flex", flexDirection: "column" }}>
     <style>{css}</style>
+    <input ref={fileRef} type="file" accept=".json" onChange={impJSON} style={{ display: "none" }} aria-hidden="true" />
+
     {/* TOP BAR */}
-    <div style={{ height: 46, display: "flex", alignItems: "center", padding: "0 12px", borderBottom: `1px solid ${G}12`, gap: 6, flexShrink: 0, background: `${G}03` }}>
-      <span style={{ fontFamily: "Outfit", fontSize: 14, fontWeight: 800, color: G, flexShrink: 0 }}>樂程坊</span>
-      <span style={{ fontSize: 9, color: "#555", flexShrink: 0 }}>提案系統</span>
+    <header style={{ height: 46, display: "flex", alignItems: "center", padding: "0 12px", borderBottom: `1px solid ${G}12`, gap: 6, flexShrink: 0, background: `${G}03` }}>
+      <a href="index.html" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }} title="查看提案網頁">
+        <span style={{ fontFamily: "Outfit", fontSize: 14, fontWeight: 800, color: G }}>樂程坊</span>
+        <span style={{ fontSize: 9, color: "#555" }}>提案系統</span>
+      </a>
       <div style={{ width: 1, height: 18, background: "rgba(255,255,255,.06)", margin: "0 2px", flexShrink: 0 }} />
-      <div style={{ display: "flex", gap: 2, flex: 1, overflow: "auto", alignItems: "center" }}>
+      {!mobile && <div style={{ display: "flex", gap: 2, flex: 1, overflow: "auto", alignItems: "center" }}>
         {schools.map(s => <div key={s.id} style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
           <button onClick={() => swSchool(s.id)} style={{ padding: "3px 9px", borderRadius: 5, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600, background: s.id === sid ? G : "rgba(255,255,255,.04)", color: s.id === sid ? INK : "#888", transition: ".2s" }}>{s.name}</button>
-          {schools.length > 1 && <button onClick={() => delSchool(s.id)} style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: 8, padding: "1px 2px" }}>×</button>}
+          {schools.length > 1 && <button onClick={() => delSchool(s.id)} aria-label={`刪除 ${s.name}`} style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: 8, padding: "1px 2px" }}>×</button>}
         </div>)}
-        <button onClick={addSchool} style={{ padding: "3px 7px", borderRadius: 5, border: `1px dashed ${G}20`, background: "none", color: G, cursor: "pointer", fontFamily: "inherit", fontSize: 10, flexShrink: 0 }}>+</button>
+        <button onClick={addSchool} aria-label="新增學校" style={{ padding: "3px 7px", borderRadius: 5, border: `1px dashed ${G}20`, background: "none", color: G, cursor: "pointer", fontFamily: "inherit", fontSize: 10, flexShrink: 0 }}>+</button>
+      </div>}
+      {mobile && <div style={{ flex: 1, overflow: "hidden" }}>
+        <select value={sid || ""} onChange={e => swSchool(e.target.value)} style={{ ...iS, fontSize: 10, padding: "3px 6px", background: "transparent", border: "none", color: G, fontWeight: 700 }}>
+          {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </div>}
+      <div style={{ display: "flex", gap: 3, flexShrink: 0, alignItems: "center" }}>
+        <button onClick={resetD} aria-label="重設資料" title="重設為預設" style={{ padding: "3px 7px", borderRadius: 4, border: "1px solid rgba(255,255,255,.06)", background: "none", color: "#666", cursor: "pointer", fontFamily: "inherit", fontSize: 9 }}>↺</button>
+        <button onClick={() => fileRef.current?.click()} aria-label="匯入 JSON" title="匯入 JSON" style={{ padding: "3px 9px", borderRadius: 4, border: `1px solid ${G}18`, background: `${G}08`, color: G, cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600 }}>⬆ 匯入</button>
+        <button onClick={expJSON} aria-label="匯出 JSON" title="匯出 JSON" style={{ padding: "3px 9px", borderRadius: 4, border: `1px solid ${G}18`, background: `${G}08`, color: G, cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600 }}>⬇ 匯出</button>
+        {saving && <span style={{ fontSize: 9, color: "#444" }} aria-label="儲存中">💾</span>}
       </div>
-      <button onClick={resetD} style={{ padding: "3px 7px", borderRadius: 4, border: "1px solid rgba(255,255,255,.06)", background: "none", color: "#666", cursor: "pointer", fontFamily: "inherit", fontSize: 9, flexShrink: 0 }}>↺</button>
-      <button onClick={expJSON} style={{ padding: "3px 9px", borderRadius: 4, border: `1px solid ${G}18`, background: `${G}08`, color: G, cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600, flexShrink: 0 }}>⬇ JSON</button>
-      {saving && <span style={{ fontSize: 9, color: "#444", flexShrink: 0 }}>💾</span>}
-    </div>
+    </header>
+
     {/* BODY */}
-    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-      {/* SIDEBAR */}
-      <div style={{ width: 130, borderRight: "1px solid rgba(255,255,255,.03)", padding: "8px 5px", display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
-        {TABS.map(t => <button key={t.id} onClick={() => setTab(t.id)} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "8px 8px", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: tab === t.id ? `${G}0c` : "transparent", color: tab === t.id ? G : "#666", fontSize: 11, fontWeight: tab === t.id ? 700 : 500, transition: ".2s" }}><span style={{ fontSize: 12 }}>{t.ic}</span>{t.lb}</button>)}
+    <div style={{ display: "flex", flex: 1, overflow: "hidden", flexDirection: mobile ? "column" : "row" }}>
+      {/* SIDEBAR (desktop) */}
+      {!mobile && <nav style={{ width: 130, borderRight: "1px solid rgba(255,255,255,.03)", padding: "8px 5px", display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }} aria-label="主導覽">
+        {TABS.map(t => <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? "page" : undefined} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "8px 8px", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: tab === t.id ? `${G}0c` : "transparent", color: tab === t.id ? G : "#666", fontSize: 11, fontWeight: tab === t.id ? 700 : 500, transition: ".2s" }}><span style={{ fontSize: 12 }} aria-hidden="true">{t.ic}</span>{t.lb}</button>)}
         <div style={{ flex: 1 }} />
-        <div style={{ padding: "8px 6px", borderRadius: 6, background: "rgba(255,255,255,.012)", fontSize: 10, color: "#666", lineHeight: 1.9 }}>
-          📍 {d.target.school}<br />📚 {d.courses.filter(c => c.on).length} 門<br />🏆 {d.recs.length} 筆<br />🥇 {d.recs.filter(r => r.tp === "gold").length}
+        <div style={{ padding: "8px 6px", borderRadius: 6, background: "rgba(255,255,255,.012)", fontSize: 10, color: "#888", lineHeight: 1.9 }}>
+          <span aria-label="學校">📍</span> {d.target.school}<br /><span aria-label="課程數">📚</span> {d.courses.filter(c => c.on).length} 門<br /><span aria-label="戰績數">🏆</span> {d.recs.length} 筆<br /><span aria-label="金牌數">🥇</span> {d.recs.filter(r => r.tp === "gold").length}
         </div>
-      </div>
+      </nav>}
+
       {/* CONTENT */}
-      <div style={{ flex: 1, overflow: "auto", padding: 14 }}>
+      <main style={{ flex: 1, overflow: "auto", padding: mobile ? "12px 10px 80px" : 14 }}>
         <div style={{ maxWidth: tab === "preview" ? 680 : 660, margin: "0 auto", animation: "fu .25s ease" }} key={tab + sid}>
           {tab === "school" && <TabSchool d={d} set={setD} />}
           {tab === "courses" && <TabCourses d={d} set={setD} />}
           {tab === "records" && <TabRecords d={d} set={setD} />}
           {tab === "preview" && <TabPreview d={d} />}
         </div>
-      </div>
+      </main>
     </div>
-    {toast && <div style={{ position: "fixed", bottom: 14, left: "50%", transform: "translateX(-50%)", padding: "5px 16px", borderRadius: 6, background: `${G}15`, border: `1px solid ${G}25`, color: G, fontSize: 10, fontWeight: 600, animation: "tp .2s ease", zIndex: 999, backdropFilter: "blur(10px)" }}>{toast}</div>}
+
+    {/* MOBILE BOTTOM TAB BAR */}
+    {mobile && <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, height: 56, display: "flex", background: INK, borderTop: `1px solid ${G}15`, zIndex: 100, paddingBottom: "env(safe-area-inset-bottom)" }} aria-label="主導覽">
+      {TABS.map(t => <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? "page" : undefined} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, border: "none", cursor: "pointer", fontFamily: "inherit", background: "transparent", color: tab === t.id ? G : "#555", transition: ".2s" }}><span style={{ fontSize: 18 }} aria-hidden="true">{t.ic}</span><span style={{ fontSize: 9, fontWeight: tab === t.id ? 700 : 400 }}>{t.lb}</span></button>)}
+    </nav>}
+
+    {/* TOAST */}
+    {toast && <div role="alert" style={{ position: "fixed", bottom: mobile ? 70 : 14, left: "50%", transform: "translateX(-50%)", padding: "5px 16px", borderRadius: 6, background: `${G}15`, border: `1px solid ${G}25`, color: toast.startsWith("⚠") ? "#e55" : G, fontSize: 10, fontWeight: 600, animation: "tp .2s ease", zIndex: 999, backdropFilter: "blur(10px)", whiteSpace: "nowrap" }}>{toast}</div>}
   </div>;
 }
 
@@ -316,9 +388,10 @@ const css = `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @keyframes tp{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
-input:focus,textarea:focus,select:focus{border-color:#c4a24340!important;box-shadow:0 0 0 2px #c4a24310}
+input:focus,textarea:focus,select:focus{border-color:${G}40!important;box-shadow:0 0 0 2px ${G}10}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.05);border-radius:2px}
-*{box-sizing:border-box;margin:0;padding:0}`;
+*{box-sizing:border-box;margin:0;padding:0}
+@media(prefers-reduced-motion:reduce){*{animation-duration:0.01ms!important;transition-duration:0.01ms!important}}`;
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(App));
