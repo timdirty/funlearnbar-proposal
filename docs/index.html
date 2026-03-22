@@ -722,20 +722,10 @@ table.ct td:first-child{font-weight:600}
 }
 
 /* ── ROADMAP SCROLL HINTS ── */
-.rm-scroll-hint{display:none}
+.rm-scroll-hint{display:none!important}
 
 @media(max-width:640px){
-  /* Scroll hint text */
-  .rm-scroll-hint{
-    display:block!important;
-    text-align:center;font-size:.56rem;color:var(--muted);
-    padding:4px 0 0;opacity:.5;
-    animation:hintPulse 2.5s ease-in-out infinite;
-  }
-  @keyframes hintPulse{
-    0%,100%{opacity:.3}
-    50%{opacity:.6}
-  }
+
   
   /* Right fade gradient on scroll container */
   .rm-row{position:relative}
@@ -755,7 +745,7 @@ table.ct td:first-child{font-weight:600}
   /* Add left padding so first card doesn't touch edge */
   .rm-nodes,.rm-nodes-3{
     padding-left:2px!important;
-    padding-right:40px!important;
+    padding-right:8px!important;
   }
   
   /* Make cards slightly wider for readability */
@@ -892,7 +882,6 @@ table.ct td:first-child{font-weight:600}
 <div class="rm-badge">WRO</div><div class="rm-badge">FLL</div><div class="rm-badge">資通訊</div>
 </div>
 </div>
-<div class="rm-scroll-hint">← 左右滑動看更多 →</div>
 </div>
 </div>
 
@@ -936,7 +925,6 @@ table.ct td:first-child{font-weight:600}
 <div class="rm-badge">科展</div>
 </div>
 </div>
-<div class="rm-scroll-hint">← 左右滑動看更多 →</div>
 </div>
 </div>
 
@@ -972,7 +960,6 @@ table.ct td:first-child{font-weight:600}
 <div class="rm-badge">無人機賽</div>
 </div>
 </div>
-<div class="rm-scroll-hint">← 左右滑動看更多 →</div>
 </div>
 </div>
 
@@ -1329,8 +1316,7 @@ if(matchMedia('(max-width:640px)').matches){
 if(matchMedia('(max-width:640px)').matches){
   $$('.rm-nodes,.rm-nodes-3').forEach(el=>{
     el.addEventListener('scroll',function(){
-      const hint=this.parentElement.querySelector('.rm-scroll-hint');
-      if(hint)hint.style.opacity='0';
+
 
     },{passive:true});
   });
