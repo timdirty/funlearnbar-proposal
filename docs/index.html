@@ -623,7 +623,7 @@ table.ct td:first-child{font-weight:600}
   .tl-item:active{background:rgba(255,255,255,.06)!important}
   
   /* Smooth scrolling hint for roadmap */
-  .rm-nodes::after,.rm-nodes-3::after{content:'';position:sticky;right:0;flex:0 0 30px;background:linear-gradient(90deg,transparent,var(--cream));pointer-events:none;z-index:3;height:100%;align-self:stretch}
+  .rm-nodes::after,.rm-nodes-3::after{content:'';position:sticky;right:0;flex:0 0 30px;background:linear-gradient(90deg,transparent,var(--surface));pointer-events:none;z-index:3;height:100%;align-self:stretch}
   
   /* Prevent text selection on interactive elements */
   .mob-tab,.outline,.btt,.ham{-webkit-user-select:none;user-select:none}
@@ -744,13 +744,13 @@ table.ct td:first-child{font-weight:600}
     position:absolute;
     right:0;top:30px;bottom:10px;
     width:40px;
-    background:linear-gradient(90deg,transparent,var(--cream));
+    background:linear-gradient(90deg,transparent,var(--surface));
     pointer-events:none;
     z-index:3;
     border-radius:0 0 8px 0;
     transition:opacity .3s;
   }
-  .rm-row:last-child::after{background:linear-gradient(90deg,transparent,var(--cream))}
+  .rm-row:last-child::after{background:linear-gradient(90deg,transparent,var(--surface))}
   
   /* Add left padding so first card doesn't touch edge */
   .rm-nodes,.rm-nodes-3{
@@ -1302,6 +1302,29 @@ $$('.outline a').forEach(a=>{
 // === RESIZE ===
 let resizeTimer;
 window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(onScroll,150)},{passive:true});
+
+
+// Auto-scroll hint for mobile roadmap tracks
+if(matchMedia('(max-width:640px)').matches){
+  const rmObs=new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(!entry.isIntersecting)return;
+      const nodes=entry.target.querySelectorAll('.rm-nodes,.rm-nodes-3');
+      nodes.forEach((el,i)=>{
+        setTimeout(()=>{
+          if(el.scrollLeft>0)return;
+          el.style.scrollBehavior='smooth';
+          el.scrollLeft=80;
+          setTimeout(()=>{el.scrollLeft=0},600);
+          setTimeout(()=>{el.style.scrollBehavior=''},1200);
+        },300+i*400);
+      });
+      rmObs.unobserve(entry.target);
+    });
+  },{threshold:0.3});
+  const tracksEl=document.getElementById('tracks');
+  if(tracksEl)rmObs.observe(tracksEl);
+}
 
 // Hide scroll hint after first interaction
 if(matchMedia('(max-width:640px)').matches){
