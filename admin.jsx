@@ -1,0 +1,306 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+
+/* ═══════════════════════════════════════════════════════════
+   樂程坊 STEAM 提案管理系統
+   Database: window.storage (persistent across sessions)
+   ═══════════════════════════════════════════════════════════ */
+
+const G = "#c4a243", G2 = "#d4b65a", INK = "#0b0b14";
+const TK = {
+  k: { c: "#be3528", n: "工程硬體", bg: "#fcefed", ic: "🔧" },
+  l: { c: "#19756a", n: "數位創客", bg: "#edf6f4", ic: "💻" },
+  m: { c: "#274fa8", n: "數位世界", bg: "#edf1f9", ic: "🌐" },
+};
+const GR = [
+  { id: "kinder", l: "幼兒園", en: "Kindergarten", c: "#be3528", ck: "k" },
+  { id: "lower", l: "低年級", en: "Lower", c: "#19756a", ck: "l" },
+  { id: "mid", l: "中年級", en: "Middle", c: "#274fa8", ck: "m" },
+  { id: "upper", l: "高年級", en: "Upper", c: "#b56400", ck: "u" },
+];
+const RT = {
+  gold: { l: "金", c: "#e8c040", e: "🥇" },
+  silver: { l: "銀", c: "#b8c0cc", e: "🥈" },
+  bronze: { l: "銅", c: "#c8956c", e: "🥉" },
+  special: { l: "特別", c: "#f0a050", e: "🏆" },
+  ongoing: { l: "進行", c: "#888", e: "📋" },
+};
+const ERAS = { 1: "2009—2012 創始期", 2: "109—112 學年度", 3: "113—114 學年度" };
+
+const SEED = {
+  brand: { name: "樂程坊", en: "Fun Learn Bar", slogan: "STEAM 科技教育 ｜ 讓孩子玩出未來競爭力" },
+  target: { school: "再興幼兒園", dept: "國小部" },
+  hero: { title: "可供開設的全系列", accent: "STEAM 科技課程", sub: "涵蓋四個學段、三條進階路線，每門課程環環相扣。校方可依需求與時段，彈性挑選組合。" },
+  courses: [
+    { id: "c1", nm: "小小機械發明家", sb: "ESM 幼兒大積木＋科學奇趣營", gr: "kinder", tk: "k", on: true, ds: "使用德國慧魚幼兒大積木，帶孩子從零認識齒輪、車輪等零件，動手拼砌會自動轉向的小車。", tg: ["空間幾何", "手眼協調", "機械原理"], cp: [], eq: "fischertechnik ESM 幼兒大積木套件" },
+    { id: "c2", nm: "3D 魔法塗鴉師", sb: "3D 列印筆＋立體創意工作坊", gr: "kinder", tk: "l", on: true, ds: "讓繪畫跳出紙面。孩子手握安全低溫 3D 列印筆，從平面堆疊出立體作品。", tg: ["立體空間感", "精細動作", "美感創造"], cp: [], eq: "兒童安全低溫 3D 列印筆（PCL）" },
+    { id: "c3", nm: "動力機關自造所", sb: "SPM 動力機械＋遙控互動營", gr: "lower", tk: "k", on: true, ds: "挑戰組裝飛天旋轉椅、摩天輪等大型連續運轉裝置。", tg: ["齒輪傳動", "結構平衡", "物理動力"], cp: [], eq: "SPM 9686 動力機械積木套件" },
+    { id: "c4", nm: "micro:bit 小小創客", sb: "微控制器＋程式啟蒙營", gr: "lower", tk: "l", on: true, ds: "用 micro:bit 帶孩子踏入寫程式控制真實世界的大門。", tg: ["圖形化程式", "感測器", "邏輯思維"], cp: ["do your:bit"], eq: "micro:bit V2 開發板" },
+    { id: "c5", nm: "麥塊探險家", sb: "Minecraft 初階＋空間啟蒙營", gr: "lower", tk: "m", on: true, ds: "使用 Minecraft 教育版，從基礎操作到建築設計。", tg: ["空間認知", "資源規劃", "合作學習"], cp: [], eq: "Minecraft Education" },
+    { id: "c6", nm: "AI 智慧自走車特攻", sb: "LEGO SPIKE＋程式邏輯入門", gr: "mid", tk: "k", on: true, ds: "正式導入 LEGO SPIKE，用圖像化積木程式賦予機器人智慧。", tg: ["感測器應用", "運算思維"], cp: ["FLL Explore", "AI START!"], eq: "LEGO SPIKE Prime" },
+    { id: "c7", nm: "Scratch 創意程式工坊", sb: "遊戲設計＋動畫＋互動 App", gr: "mid", tk: "l", on: true, ds: "用 Scratch 帶孩子從玩遊戲變成做遊戲。", tg: ["程式邏輯", "遊戲設計"], cp: ["全國貓咪盃", "臺北市貓咪盃"], eq: "筆電 / Chromebook" },
+    { id: "c8", nm: "麥塊建築大師", sb: "Minecraft 中階＋紅石電路營", gr: "mid", tk: "m", on: true, ds: "進入紅石電路的世界，設計智慧農場、自動防禦基地。", tg: ["紅石邏輯", "自動化設計"], cp: ["MC 教育版認證"], eq: "Minecraft Education" },
+    { id: "c9", nm: "競賽專班＆校隊培訓", sb: "SPIKE＋多元競賽實戰工坊", gr: "upper", tk: "k", on: true, ds: "除了 LEGO SPIKE 機器人深度訓練，更涵蓋程式挑戰、創意發明、簡報策略等多元競賽技能。", tg: ["機器人工程", "程式挑戰", "創意發明", "簡報策略"], cp: ["WRO", "FLL Challenge", "MARC 馬克盃", "資通訊大賽"], eq: "LEGO SPIKE 45678+45681、簡報工具" },
+    { id: "c10", nm: "未來領航員", sb: "AI 無人機飛控＋群飛特攻營", gr: "upper", tk: "m", on: true, ds: "從飛行原理學起，撰寫程式遙控無人機完成空中任務。", tg: ["空氣動力學", "飛行操控"], cp: ["UASACT", "全國創意無人機"], eq: "四軸程式無人機" },
+    { id: "c11", nm: "永續城市設計師", sb: "3D列印×雷切×AIoT 物聯網", gr: "upper", tk: "l", on: true, ds: "對接 SDGs，運用 3D 列印機、雷射切割機與 micro:bit 做出解決真實問題的發明。", tg: ["系統思考", "SDGs 永續"], cp: ["全國科展", "Sony 大賞"], eq: "3D 列印機、雷射切割機、micro:bit" },
+  ],
+  recs: [
+    { id: "r1", yr: "2009", ev: "電腦化運動競技大賽 自走車撞球", rk: "第一名", tp: "gold", era: 1 },
+    { id: "r2", yr: "2009", ev: "電腦化運動競技大賽 自走車競速", rk: "第一名", tp: "gold", era: 1 },
+    { id: "r3", yr: "2010", ev: "台北縣市校際盃機器人選拔", rk: "第一名", tp: "gold", era: 1 },
+    { id: "r4", yr: "2011", ev: "電腦化運動競技大賽 自走車競速", rk: "第一名", tp: "gold", era: 1 },
+    { id: "r5", yr: "2012", ev: "全國智慧型機器人大賽", rk: "第一名", tp: "gold", era: 1 },
+    { id: "r6", yr: "2012", ev: "台北市機器人校際盃", rk: "第一名", tp: "gold", era: 1 },
+    { id: "r7", yr: "111", ev: "亞洲機器人大賽（帶隊）", rk: "第一名", tp: "gold", era: 2 },
+    { id: "r8", yr: "111", ev: "科技教育創意實作全國賽", rk: "銅獎（北市唯一）", tp: "special", era: 2 },
+    { id: "r9", yr: "112", ev: "資通訊應用大賽創意賽", rk: "第一名＆裁判特別獎", tp: "gold", era: 2 },
+    { id: "r10", yr: "113", ev: "亞洲機器人大賽台灣選拔", rk: "第一名", tp: "gold", era: 3 },
+    { id: "r11", yr: "113", ev: "智慧科技素養與程式設計", rk: "第一名", tp: "gold", era: 3 },
+    { id: "r12", yr: "113", ev: "資通訊應用大賽創意賽", rk: "第一名", tp: "gold", era: 3 },
+    { id: "r13", yr: "113", ev: "台灣國際發明展（帶隊）", rk: "銀牌", tp: "silver", era: 3 },
+  ],
+  hi: [
+    { id: "h1", ic: "⚡", t: "K-6 完整路線", d: "三條主線環環相扣，不必東拼西湊" },
+    { id: "h2", ic: "⭐", t: "8+ 競賽出口", d: "每門課都有競賽對接，累積升學履歷" },
+    { id: "h3", ic: "🔗", t: "課程綁定升級", d: "每門課是下一學年的基石" },
+    { id: "h4", ic: "📦", t: "校方彈性選配", d: "完整選單自由挑選組合" },
+  ],
+};
+
+// ── DB Layer ──
+const db = {
+  async get(k) { try { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : null; } catch { return null; } },
+  async set(k, v) { try { await window.storage.set(k, JSON.stringify(v)); } catch {} },
+  async del(k) { try { await window.storage.delete(k); } catch {} },
+};
+
+// ── Styles ──
+const iS = { width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.04)", color: "#eee", fontSize: 12, outline: "none", fontFamily: "inherit", transition: ".2s" };
+
+function P({ c, children }) { return <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 5, fontSize: 9, fontWeight: 600, background: c + "15", color: c, border: `1px solid ${c}20`, whiteSpace: "nowrap" }}>{children}</span>; }
+function F({ l, v, fn, m }) { return <div style={{ flex: 1 }}>{l && <label style={{ fontSize: 10, color: "#666", display: "block", marginBottom: 2 }}>{l}</label>}{m ? <textarea value={v} onChange={e => fn(e.target.value)} style={{ ...iS, height: 48, resize: "vertical" }} /> : <input value={v} onChange={e => fn(e.target.value)} style={iS} />}</div>; }
+
+// ═══════════════════════════════════════════════════════════
+// TAB: SCHOOL SETTINGS
+// ═══════════════════════════════════════════════════════════
+function TabSchool({ d, set }) {
+  const u = (p, v) => { const c = JSON.parse(JSON.stringify(d)); const k = p.split("."); let o = c; for (let i = 0; i < k.length - 1; i++) o = o[k[i]]; o[k.at(-1)] = v; set(c); };
+  const sH = (i, k, v) => { const h = [...d.hi]; h[i] = { ...h[i], [k]: v }; set({ ...d, hi: h }); };
+  return <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <Sec t="目標學校"><div style={{ display: "flex", gap: 8 }}><F l="學校" v={d.target.school} fn={v => u("target.school", v)} /><F l="部門" v={d.target.dept} fn={v => u("target.dept", v)} /></div></Sec>
+    <Sec t="首頁 HERO"><div style={{ display: "flex", flexDirection: "column", gap: 6 }}><F l="主標題" v={d.hero.title} fn={v => u("hero.title", v)} /><F l="金色強調" v={d.hero.accent} fn={v => u("hero.accent", v)} /><F l="副標" v={d.hero.sub} fn={v => u("hero.sub", v)} m /></div></Sec>
+    <Sec t="品牌"><div style={{ display: "flex", gap: 8 }}><F l="中文" v={d.brand.name} fn={v => u("brand.name", v)} /><F l="英文" v={d.brand.en} fn={v => u("brand.en", v)} /></div><div style={{ marginTop: 6 }}><F l="Slogan" v={d.brand.slogan} fn={v => u("brand.slogan", v)} /></div></Sec>
+    <Sec t="四大亮點">{d.hi.map((h, i) => <div key={h.id} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}><input value={h.ic} onChange={e => sH(i, "ic", e.target.value)} style={{ ...iS, width: 36, textAlign: "center", fontSize: 16, padding: 3 }} /><F v={h.t} fn={v => sH(i, "t", v)} /><F v={h.d} fn={v => sH(i, "d", v)} /></div>)}</Sec>
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB: COURSES
+// ═══════════════════════════════════════════════════════════
+function TabCourses({ d, set }) {
+  const [ed, setEd] = useState(null);
+  const tog = id => set({ ...d, courses: d.courses.map(c => c.id === id ? { ...c, on: !c.on } : c) });
+  const uc = (id, k, v) => set({ ...d, courses: d.courses.map(c => c.id === id ? { ...c, [k]: v } : c) });
+  const add = gr => { const n = { id: `c${Date.now()}`, nm: "新課程", sb: "", gr, tk: "k", on: true, ds: "", tg: [], cp: [], eq: "" }; set({ ...d, courses: [...d.courses, n] }); setEd(n.id); };
+  return <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    {GR.map(g => { const gc = d.courses.filter(c => c.gr === g.id); return <div key={g.id}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7 }}><div style={{ width: 7, height: 7, borderRadius: 4, background: g.c }} /><span style={{ fontSize: 12, fontWeight: 700, color: g.c }}>{g.l}</span><span style={{ fontSize: 10, color: "#555" }}>{gc.filter(c => c.on).length}/{gc.length}</span></div>
+      {gc.map(c => <div key={c.id} style={{ marginBottom: ed === c.id ? 6 : 3 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 9px", borderRadius: 7, background: c.on ? "rgba(255,255,255,.03)" : "rgba(255,255,255,.008)", border: `1px solid rgba(255,255,255,${c.on ? ".05" : ".02"})`, opacity: c.on ? 1 : .3, transition: ".3s" }}>
+          <div onClick={() => tog(c.id)} style={{ width: 30, height: 16, borderRadius: 8, background: c.on ? G : "#333", cursor: "pointer", position: "relative", flexShrink: 0, transition: ".3s" }}><div style={{ width: 12, height: 12, borderRadius: 6, background: "#fff", position: "absolute", top: 2, left: c.on ? 16 : 2, transition: ".25s" }} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 600, color: c.on ? "#eee" : "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nm}</div><div style={{ fontSize: 10, color: "#555" }}>{c.sb}</div></div>
+          <P c={TK[c.tk].c}>{TK[c.tk].ic} {TK[c.tk].n}</P>
+          {c.cp.length > 0 && <P c={G}>🏆{c.cp.length}</P>}
+          <button onClick={() => setEd(ed === c.id ? null : c.id)} style={{ background: "none", border: "none", color: ed === c.id ? G : "#555", cursor: "pointer", fontSize: 12 }}>{ed === c.id ? "▲" : "✎"}</button>
+        </div>
+        {ed === c.id && <div style={{ padding: "10px 12px", marginLeft: 37, marginTop: 3, borderRadius: 7, background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.04)", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", gap: 6 }}><F l="名稱" v={c.nm} fn={v => uc(c.id, "nm", v)} /><F l="副標" v={c.sb} fn={v => uc(c.id, "sb", v)} /></div>
+          <F l="說明" v={c.ds} fn={v => uc(c.id, "ds", v)} m />
+          <div style={{ display: "flex", gap: 6 }}><div style={{ width: 80 }}><label style={{ fontSize: 10, color: "#666", display: "block", marginBottom: 2 }}>路線</label><select value={c.tk} onChange={e => uc(c.id, "tk", e.target.value)} style={iS}>{Object.entries(TK).map(([k, v]) => <option key={k} value={k}>{v.n}</option>)}</select></div><F l="器材" v={c.eq} fn={v => uc(c.id, "eq", v)} /></div>
+          <F l="標籤（逗號）" v={c.tg.join(", ")} fn={v => uc(c.id, "tg", v.split(",").map(s => s.trim()).filter(Boolean))} />
+          <F l="對接競賽（逗號）" v={c.cp.join(", ")} fn={v => uc(c.id, "cp", v.split(",").map(s => s.trim()).filter(Boolean))} />
+          <button onClick={() => { set({ ...d, courses: d.courses.filter(x => x.id !== c.id) }); setEd(null); }} style={{ alignSelf: "flex-start", padding: "4px 10px", borderRadius: 5, border: "none", background: "rgba(200,50,50,.08)", color: "#e55", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>刪除</button>
+        </div>}
+      </div>)}
+      <button onClick={() => add(g.id)} style={{ width: "100%", marginTop: 3, padding: "6px 0", borderRadius: 6, border: `1px dashed ${G}20`, background: `${G}05`, color: G, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>+ 新增</button>
+    </div>; })}
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB: RECORDS
+// ═══════════════════════════════════════════════════════════
+function TabRecords({ d, set }) {
+  const [ed, setEd] = useState(null);
+  const ur = (id, k, v) => set({ ...d, recs: d.recs.map(r => r.id === id ? { ...r, [k]: v } : r) });
+  return <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    {[1, 2, 3].map(era => { const items = d.recs.filter(r => r.era === era); return <div key={era}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}><div style={{ width: 16, height: 2, background: G, borderRadius: 1 }} /><span style={{ fontSize: 12, fontWeight: 700, color: "#eee" }}>{ERAS[era]}</span><P c={G}>{items.length}</P></div>
+      {items.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 7px", borderRadius: 5, background: "rgba(255,255,255,.02)", borderLeft: `2px solid ${RT[r.tp].c}40`, marginBottom: 2 }}>
+        {ed === r.id ? <div style={{ flex: 1, display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
+          <input value={r.yr} onChange={e => ur(r.id, "yr", e.target.value)} style={{ ...iS, width: 42, padding: 3, fontSize: 10 }} placeholder="年" />
+          <input value={r.ev} onChange={e => ur(r.id, "ev", e.target.value)} style={{ ...iS, flex: 1, padding: 3, fontSize: 10, minWidth: 100 }} placeholder="賽事" />
+          <input value={r.rk} onChange={e => ur(r.id, "rk", e.target.value)} style={{ ...iS, width: 72, padding: 3, fontSize: 10 }} placeholder="成績" />
+          <select value={r.tp} onChange={e => ur(r.id, "tp", e.target.value)} style={{ ...iS, width: 50, padding: 3, fontSize: 10 }}>{Object.entries(RT).map(([k, v]) => <option key={k} value={k}>{v.e}</option>)}</select>
+          <button onClick={() => setEd(null)} style={{ padding: "2px 8px", borderRadius: 4, border: "none", background: `${G}18`, color: G, cursor: "pointer", fontSize: 11 }}>✓</button>
+        </div> : <>
+          <span style={{ fontSize: 10, color: "#777", fontWeight: 600, minWidth: 28 }}>{r.yr}</span>
+          <span style={{ flex: 1, fontSize: 11, color: "#bbb" }}>{r.ev}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: RT[r.tp].c, whiteSpace: "nowrap" }}>{RT[r.tp].e} {r.rk}</span>
+          <button onClick={() => setEd(r.id)} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 11 }}>✎</button>
+          <button onClick={() => set({ ...d, recs: d.recs.filter(x => x.id !== r.id) })} style={{ background: "none", border: "none", color: "#442", cursor: "pointer", fontSize: 11 }}>×</button>
+        </>}
+      </div>)}
+      <button onClick={() => { const n = { id: `r${Date.now()}`, yr: "", ev: "", rk: "", tp: "gold", era }; set({ ...d, recs: [...d.recs, n] }); setEd(n.id); }} style={{ width: "100%", marginTop: 3, padding: "5px 0", borderRadius: 5, border: `1px dashed ${G}15`, background: `${G}04`, color: G, fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>+ 新增</button>
+    </div>; })}
+  </div>;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB: PREVIEW
+// ═══════════════════════════════════════════════════════════
+function TabPreview({ d }) {
+  const on = d.courses.filter(c => c.on);
+  const golds = d.recs.filter(r => r.tp === "gold").length;
+  const usedG = GR.filter(g => on.some(c => c.gr === g.id));
+  const usedT = [...new Set(on.map(c => c.tk))];
+
+  return <div style={{ display: "flex", flexDirection: "column", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(255,255,255,.06)", boxShadow: "0 16px 48px rgba(0,0,0,.35)" }}>
+    {/* HERO */}
+    <div style={{ background: `linear-gradient(145deg,${INK},#1a1830)`, padding: "32px 22px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: `${G}06`, top: -60, left: -40, filter: "blur(60px)" }} />
+      <div style={{ position: "absolute", width: 140, height: 140, borderRadius: "50%", background: "rgba(39,79,168,.04)", bottom: -50, right: -30, filter: "blur(50px)" }} />
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: 50, border: `1px solid ${G}40`, fontSize: 9, fontWeight: 700, color: G2, letterSpacing: 2, marginBottom: 14, background: `${G}0a` }}>{d.brand.name} × {d.target.school} {d.target.dept}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", fontFamily: "Outfit, Noto Sans TC, sans-serif", letterSpacing: "-.02em" }}>{d.hero.title}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "Outfit, Noto Sans TC, sans-serif", background: `linear-gradient(135deg,${G},#e8d080)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{d.hero.accent}</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,.5)", marginTop: 8, maxWidth: 380, margin: "8px auto 0", lineHeight: 1.8 }}>{d.hero.sub}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, maxWidth: 380, margin: "16px auto 0" }}>
+          {[{ v: on.length, l: "門課程" }, { v: usedG.length, l: "個學段" }, { v: usedT.length, l: "條路線" }, { v: d.recs.length, l: "獎項" }].map((s, i) => <div key={i} style={{ textAlign: "center", padding: "10px 3px", borderRadius: 8, background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.06)" }}><div style={{ fontFamily: "Outfit", fontSize: 18, fontWeight: 800, color: "#fff" }}>{s.v}</div><div style={{ fontSize: 8, color: "rgba(255,255,255,.4)", marginTop: 2 }}>{s.l}</div></div>)}
+        </div>
+      </div>
+    </div>
+    {/* ROADMAP */}
+    <div style={{ padding: "20px 22px 14px", background: "#faf9f6" }}>
+      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 3, color: G, marginBottom: 4 }}>LEARNING TRACKS</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: INK, marginBottom: 12, fontFamily: "Outfit, Noto Sans TC" }}>三大路線 × 跨年級銜接</div>
+      {Object.entries(TK).map(([tk, meta]) => { const tc = on.filter(c => c.tk === tk).sort((a, b) => GR.findIndex(g => g.id === a.gr) - GR.findIndex(g => g.id === b.gr)); if (!tc.length) return null; return <div key={tk} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, padding: "8px 12px", borderRadius: 8, background: "#fff", border: "1px solid #eee" }}>
+        <div style={{ width: 24, height: 24, borderRadius: 6, background: meta.c + "10", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{meta.ic}</div>
+        <span style={{ fontSize: 10, fontWeight: 700, color: meta.c, minWidth: 44, letterSpacing: 1 }}>{meta.n}</span>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>{tc.map((c, i) => <span key={c.id} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}><span style={{ fontSize: 11, fontWeight: 600, color: INK }}>{c.nm}</span><span style={{ fontSize: 7, color: "#aaa", padding: "0 4px", borderRadius: 3, background: "#f5f5f0" }}>{GR.find(g => g.id === c.gr)?.l}</span>{i < tc.length - 1 && <span style={{ color: meta.c, fontSize: 10, margin: "0 1px", fontWeight: 700 }}>→</span>}</span>)}</div>
+      </div>; })}
+    </div>
+    {/* GRADES */}
+    {GR.map((g, gi) => { const gc = on.filter(c => c.gr === g.id); if (!gc.length) return null; return <div key={g.id} style={{ padding: "16px 22px", background: gi % 2 === 0 ? "#faf9f6" : "#fff" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 6, background: TK[gc[0]?.tk]?.bg || "#f5f5f5", marginBottom: 10 }}><div style={{ width: 8, height: 8, borderRadius: 4, background: g.c, boxShadow: `0 0 6px ${g.c}` }} /><span style={{ fontSize: 10, fontWeight: 700, color: g.c, letterSpacing: 1 }}>{g.l}</span><span style={{ fontSize: 8, color: "#999" }}>{g.en}</span></div>
+      <div style={{ display: "grid", gridTemplateColumns: gc.length >= 3 ? "1fr 1fr 1fr" : gc.length === 2 ? "1fr 1fr" : "1fr", gap: 8 }}>{gc.map(c => <div key={c.id} style={{ borderRadius: 10, overflow: "hidden", background: "#fff", border: "1px solid #e8e8e2", boxShadow: "0 1px 4px rgba(0,0,0,.03)" }}>
+        <div style={{ height: 4, background: `linear-gradient(90deg,${TK[c.tk].c},${TK[c.tk].c}88)` }} />
+        <div style={{ padding: "10px 12px" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: INK, fontFamily: "Outfit, Noto Sans TC" }}>{c.nm}</div>
+          <div style={{ fontSize: 9, color: "#999", fontStyle: "italic", marginBottom: 6 }}>{c.sb}</div>
+          <div style={{ fontSize: 10, color: "#666", lineHeight: 1.7, marginBottom: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{c.ds}</div>
+          <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>{c.tg.map(t => <P key={t} c={TK[c.tk].c}>{t}</P>)}{c.cp.map(x => <P key={x} c={G}>⭐{x}</P>)}</div>
+          {c.eq && <div style={{ marginTop: 5, paddingTop: 5, borderTop: "1px dashed #eee", fontSize: 8, color: "#aaa" }}>🔧 {c.eq}</div>}
+        </div>
+      </div>)}</div>
+    </div>; })}
+    {/* RECORDS */}
+    <div style={{ padding: "20px 22px", background: INK }}>
+      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 3, color: G2, marginBottom: 4 }}>TRACK RECORD</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", marginBottom: 12, fontFamily: "Outfit, Noto Sans TC" }}>歷年競賽實績</div>
+      {[1, 2, 3].map(era => { const items = d.recs.filter(r => r.era === era); if (!items.length) return null; return <div key={era} style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#fff", marginBottom: 5 }}><span style={{ display: "inline-block", width: 14, height: 2, background: G, borderRadius: 1, verticalAlign: "middle", marginRight: 5 }} />{ERAS[era]}</div>
+        {items.map(r => <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 5, background: "rgba(255,255,255,.02)", borderLeft: `2px solid ${RT[r.tp].c}40`, marginBottom: 1 }}><span style={{ fontSize: 9, color: "#777", fontWeight: 600, minWidth: 26 }}>{r.yr}</span><span style={{ flex: 1, fontSize: 10, color: "rgba(255,255,255,.6)" }}>{r.ev}</span><span style={{ fontSize: 9, fontWeight: 700, color: RT[r.tp].c, whiteSpace: "nowrap" }}>{RT[r.tp].e} {r.rk}</span></div>)}
+      </div>; })}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.05)" }}>{[{ v: d.recs.length, l: "累計獎項" }, { v: golds, l: "第一名" }, { v: "16", l: "年深耕" }].map((s, i) => <div key={i} style={{ textAlign: "center", padding: "10px 4px", borderRadius: 8, background: `${G}08`, border: `1px solid ${G}10` }}><div style={{ fontFamily: "Outfit", fontSize: 18, fontWeight: 800, color: G2 }}>{s.v}</div><div style={{ fontSize: 8, color: "rgba(255,255,255,.35)", marginTop: 2 }}>{s.l}</div></div>)}</div>
+    </div>
+    {/* HIGHLIGHTS */}
+    <div style={{ padding: "16px 22px", background: "#15152a" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>{d.hi.map(h => <div key={h.id} style={{ padding: "12px 12px", borderRadius: 8, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.05)" }}><div style={{ fontSize: 18, marginBottom: 4 }}>{h.ic}</div><div style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{h.t}</div><div style={{ fontSize: 9, color: "rgba(255,255,255,.45)", lineHeight: 1.6 }}>{h.d}</div></div>)}</div>
+    </div>
+    <div style={{ padding: "12px 22px", background: "#080810", textAlign: "center" }}><div style={{ fontSize: 9, color: "rgba(255,255,255,.18)" }}>© 2025 {d.brand.name} {d.brand.en} — 專為{d.target.school}{d.target.dept}量身規劃</div></div>
+  </div>;
+}
+
+function Sec({ t, children }) { return <div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: G, marginBottom: 8, textTransform: "uppercase" }}>{t}</div>{children}</div>; }
+
+// ═══════════════════════════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════════════════════════
+export default function App() {
+  const [schools, setSchools] = useState([]);
+  const [sid, setSid] = useState(null);
+  const [d, setD] = useState(null);
+  const [tab, setTab] = useState("preview");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+  const tm = useRef(null);
+
+  useEffect(() => { (async () => {
+    let list = await db.get("schools");
+    if (!list?.length) { const id = "s" + Date.now(); list = [{ id, name: "再興幼兒園 國小部" }]; await db.set("schools", list); await db.set(id, SEED); }
+    setSchools(list); const cfg = await db.get(list[0].id); setD(cfg || SEED); setSid(list[0].id); setLoading(false);
+  })(); }, []);
+
+  useEffect(() => { if (!sid || !d || loading) return; clearTimeout(tm.current); tm.current = setTimeout(async () => { setSaving(true); await db.set(sid, d); setSaving(false); }, 500); }, [d]);
+
+  const flash = m => { setToast(m); setTimeout(() => setToast(null), 2000); };
+  const addSchool = async () => { const n = prompt("學校名稱："); if (!n) return; const id = "s" + Date.now(); const nl = [...schools, { id, name: n }]; const nc = { ...SEED, target: { school: n, dept: "" } }; await db.set("schools", nl); await db.set(id, nc); setSchools(nl); setSid(id); setD(nc); flash("✓ " + n); };
+  const swSchool = async id => { setLoading(true); setD(await db.get(id) || SEED); setSid(id); setLoading(false); };
+  const delSchool = async id => { if (schools.length < 2) return flash("至少保留一校"); if (!confirm("確定刪除？")) return; await db.del(id); const nl = schools.filter(s => s.id !== id); await db.set("schools", nl); setSchools(nl); if (sid === id) swSchool(nl[0].id); flash("✓ 已刪除"); };
+  const expJSON = () => { const b = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `${d.target.school}_config.json`; a.click(); flash("✓ 已匯出"); };
+  const resetD = async () => { if (!confirm("重設為預設？")) return; setD(SEED); flash("✓ 已重設"); };
+
+  if (loading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: INK, fontFamily: "'Noto Sans TC',sans-serif" }}><style>{css}</style><div style={{ width: 24, height: 24, border: `2px solid ${G}`, borderTopColor: "transparent", borderRadius: 12, animation: "spin .7s linear infinite" }} /></div>;
+
+  const TABS = [{ id: "preview", ic: "👁", lb: "即時預覽" }, { id: "school", ic: "🏫", lb: "學校設定" }, { id: "courses", ic: "📚", lb: "課程管理" }, { id: "records", ic: "🏆", lb: "競賽戰績" }];
+
+  return <div style={{ minHeight: "100vh", background: INK, fontFamily: "'Noto Sans TC','Outfit',sans-serif", color: "#ddd", display: "flex", flexDirection: "column" }}>
+    <style>{css}</style>
+    {/* TOP BAR */}
+    <div style={{ height: 46, display: "flex", alignItems: "center", padding: "0 12px", borderBottom: `1px solid ${G}12`, gap: 6, flexShrink: 0, background: `${G}03` }}>
+      <span style={{ fontFamily: "Outfit", fontSize: 14, fontWeight: 800, color: G, flexShrink: 0 }}>樂程坊</span>
+      <span style={{ fontSize: 9, color: "#555", flexShrink: 0 }}>提案系統</span>
+      <div style={{ width: 1, height: 18, background: "rgba(255,255,255,.06)", margin: "0 2px", flexShrink: 0 }} />
+      <div style={{ display: "flex", gap: 2, flex: 1, overflow: "auto", alignItems: "center" }}>
+        {schools.map(s => <div key={s.id} style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+          <button onClick={() => swSchool(s.id)} style={{ padding: "3px 9px", borderRadius: 5, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600, background: s.id === sid ? G : "rgba(255,255,255,.04)", color: s.id === sid ? INK : "#888", transition: ".2s" }}>{s.name}</button>
+          {schools.length > 1 && <button onClick={() => delSchool(s.id)} style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: 8, padding: "1px 2px" }}>×</button>}
+        </div>)}
+        <button onClick={addSchool} style={{ padding: "3px 7px", borderRadius: 5, border: `1px dashed ${G}20`, background: "none", color: G, cursor: "pointer", fontFamily: "inherit", fontSize: 10, flexShrink: 0 }}>+</button>
+      </div>
+      <button onClick={resetD} style={{ padding: "3px 7px", borderRadius: 4, border: "1px solid rgba(255,255,255,.06)", background: "none", color: "#666", cursor: "pointer", fontFamily: "inherit", fontSize: 9, flexShrink: 0 }}>↺</button>
+      <button onClick={expJSON} style={{ padding: "3px 9px", borderRadius: 4, border: `1px solid ${G}18`, background: `${G}08`, color: G, cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600, flexShrink: 0 }}>⬇ JSON</button>
+      {saving && <span style={{ fontSize: 9, color: "#444", flexShrink: 0 }}>💾</span>}
+    </div>
+    {/* BODY */}
+    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      {/* SIDEBAR */}
+      <div style={{ width: 130, borderRight: "1px solid rgba(255,255,255,.03)", padding: "8px 5px", display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
+        {TABS.map(t => <button key={t.id} onClick={() => setTab(t.id)} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "8px 8px", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: tab === t.id ? `${G}0c` : "transparent", color: tab === t.id ? G : "#666", fontSize: 11, fontWeight: tab === t.id ? 700 : 500, transition: ".2s" }}><span style={{ fontSize: 12 }}>{t.ic}</span>{t.lb}</button>)}
+        <div style={{ flex: 1 }} />
+        <div style={{ padding: "8px 6px", borderRadius: 6, background: "rgba(255,255,255,.012)", fontSize: 10, color: "#666", lineHeight: 1.9 }}>
+          📍 {d.target.school}<br />📚 {d.courses.filter(c => c.on).length} 門<br />🏆 {d.recs.length} 筆<br />🥇 {d.recs.filter(r => r.tp === "gold").length}
+        </div>
+      </div>
+      {/* CONTENT */}
+      <div style={{ flex: 1, overflow: "auto", padding: tab === "preview" ? 14 : 14 }}>
+        <div style={{ maxWidth: tab === "preview" ? 680 : 660, margin: "0 auto", animation: "fu .25s ease" }} key={tab + sid}>
+          {tab === "school" && <TabSchool d={d} set={setD} />}
+          {tab === "courses" && <TabCourses d={d} set={setD} />}
+          {tab === "records" && <TabRecords d={d} set={setD} />}
+          {tab === "preview" && <TabPreview d={d} />}
+        </div>
+      </div>
+    </div>
+    {toast && <div style={{ position: "fixed", bottom: 14, left: "50%", transform: "translateX(-50%)", padding: "5px 16px", borderRadius: 6, background: `${G}15`, border: `1px solid ${G}25`, color: G, fontSize: 10, fontWeight: 600, animation: "tp .2s ease", zIndex: 999, backdropFilter: "blur(10px)" }}>{toast}</div>}
+  </div>;
+}
+
+const css = `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@400;600;700;800;900&display=swap');
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tp{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+input:focus,textarea:focus,select:focus{border-color:${G}40!important;box-shadow:0 0 0 2px ${G}10}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.05);border-radius:2px}
+*{box-sizing:border-box;margin:0;padding:0}`;
