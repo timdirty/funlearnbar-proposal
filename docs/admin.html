@@ -207,7 +207,7 @@ function TabPreview({ d }) {
         <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "Outfit, Noto Sans TC, sans-serif", background: `linear-gradient(135deg,${G},#e8d080)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{d.hero.accent}</div>
         <div style={{ fontSize: 11, color: "rgba(255,255,255,.5)", marginTop: 8, maxWidth: 380, margin: "8px auto 0", lineHeight: 1.8 }}>{d.hero.sub}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, maxWidth: 380, margin: "16px auto 0" }}>
-          {[{ v: on.length, l: "門課程" }, { v: usedG.length, l: "個學段" }, { v: usedT.length, l: "條路線" }, { v: d.recs.length, l: "獎項" }].map((s, i) => <div key={i} style={{ textAlign: "center", padding: "10px 3px", borderRadius: 8, background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.06)" }}><div style={{ fontFamily: "Outfit", fontSize: 18, fontWeight: 800, color: "#fff" }}>{s.v}</div><div style={{ fontSize: 8, color: "rgba(255,255,255,.4)", marginTop: 2 }}>{s.l}</div></div>)}
+          {[{ v: on.length, l: "門課程" }, { v: usedG.length, l: "個學段" }, { v: usedT.length, l: "條路線" }, { v: d.recs.length, l: "累計獎項" }].map((s, i) => <div key={i} style={{ textAlign: "center", padding: "10px 3px", borderRadius: 8, background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.06)" }}><div style={{ fontFamily: "Outfit", fontSize: 18, fontWeight: 800, color: "#fff" }}>{s.v}</div><div style={{ fontSize: 8, color: "rgba(255,255,255,.4)", marginTop: 2 }}>{s.l}</div></div>)}
         </div>
       </div>
     </div>
@@ -249,6 +249,21 @@ function TabPreview({ d }) {
     <div style={{ padding: "16px 22px", background: "#15152a" }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>{d.hi.map(h => <div key={h.id} style={{ padding: "12px 12px", borderRadius: 8, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.05)" }}><div style={{ fontSize: 18, marginBottom: 4 }}>{h.ic}</div><div style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{h.t}</div><div style={{ fontSize: 9, color: "rgba(255,255,255,.45)", lineHeight: 1.6 }}>{h.d}</div></div>)}</div>
     </div>
+    {/* CONTACT */}
+    {(d.contact?.line || d.contact?.email) && <div style={{ padding: "16px 22px", background: "#080810" }}>
+      <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+        {d.contact?.line && <span style={{ fontSize: 10, color: G2, display: "inline-flex", alignItems: "center", gap: 4 }}>💬 LINE {d.contact.line}</span>}
+        {d.contact?.email && <span style={{ fontSize: 10, color: G2, display: "inline-flex", alignItems: "center", gap: 4 }}>✉ {d.contact.email}</span>}
+      </div>
+    </div>}
+    {/* SCHEDULE */}
+    {(d.schedule?.kinder || d.schedule?.elementary) && <div style={{ padding: "12px 22px", background: "#0a0a16" }}>
+      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+        {d.schedule?.kinder && <span style={{ fontSize: 9, color: "rgba(255,255,255,.3)" }}>🎒 幼兒園 {d.schedule.kinder}</span>}
+        {d.schedule?.elementary && <span style={{ fontSize: 9, color: "rgba(255,255,255,.3)" }}>🏫 小學 {d.schedule.elementary}</span>}
+      </div>
+      {d.schedule?.note && <div style={{ textAlign: "center", fontSize: 8, color: "rgba(255,255,255,.2)", marginTop: 4 }}>{d.schedule.note}</div>}
+    </div>}
     <div style={{ padding: "12px 22px", background: "#080810", textAlign: "center" }}><div style={{ fontSize: 9, color: "rgba(255,255,255,.18)" }}>© 2025 {d.brand.name} {d.brand.en} — 專為{d.target.school}{d.target.dept}量身規劃</div></div>
   </div>;
 }
@@ -302,6 +317,7 @@ function App() {
   const delSchool = async id => { if (schools.length < 2) return flash("至少保留一校"); if (!confirm("確定刪除此學校所有資料？")) return; await db.del(id); const nl = schools.filter(s => s.id !== id); await db.set("schools", nl); setSchools(nl); if (sid === id) swSchool(nl[0].id); flash("✓ 已刪除"); };
 
   const expJSON = () => { const b = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `${d.target.school || "proposal"}_config.json`; a.click(); URL.revokeObjectURL(a.href); flash("✓ 已匯出 JSON"); };
+  const copyJSON = async () => { try { await navigator.clipboard.writeText(JSON.stringify(d, null, 2)); flash("✓ 已複製到剪貼簿"); } catch { flash("⚠ 複製失敗，請用匯出"); } };
 
   const impJSON = e => {
     const file = e.target.files?.[0];
@@ -352,6 +368,8 @@ function App() {
         <button onClick={resetD} aria-label="重設資料" title="重設為預設" style={{ padding: "3px 7px", borderRadius: 4, border: "1px solid rgba(255,255,255,.06)", background: "none", color: "#8a8a9a", cursor: "pointer", fontFamily: "inherit", fontSize: 9 }}>↺</button>
         <button onClick={() => fileRef.current?.click()} aria-label="匯入 JSON" title="匯入 JSON" style={{ padding: "3px 9px", borderRadius: 4, border: `1px solid ${G}18`, background: `${G}08`, color: G, cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600 }}>⬆ 匯入</button>
         <button onClick={expJSON} aria-label="匯出 JSON" title="匯出 JSON" style={{ padding: "3px 9px", borderRadius: 4, border: `1px solid ${G}18`, background: `${G}08`, color: G, cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600 }}>⬇ 匯出</button>
+        <button onClick={copyJSON} aria-label="複製 JSON" title="複製 JSON 到剪貼簿" style={{ padding: "3px 9px", borderRadius: 4, border: "1px solid rgba(255,255,255,.06)", background: "none", color: "#8a8a9a", cursor: "pointer", fontFamily: "inherit", fontSize: 10 }}>📋</button>
+        <a href="index.html" target="_blank" rel="noopener" aria-label="開啟提案頁面" title="開啟提案頁面" style={{ padding: "3px 9px", borderRadius: 4, border: "1px solid rgba(255,255,255,.06)", background: "none", color: "#8a8a9a", cursor: "pointer", fontFamily: "inherit", fontSize: 10, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>↗</a>
         {saving && <span style={{ fontSize: 9, color: G, animation: "saved 1s ease forwards" }} aria-label="儲存中">已儲存</span>}
       </div>
     </header>
@@ -363,7 +381,7 @@ function App() {
         {TABS.map(t => <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? "page" : undefined} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "8px 8px", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: tab === t.id ? `${G}0c` : "transparent", color: tab === t.id ? G : "#666", fontSize: 11, fontWeight: tab === t.id ? 700 : 500, transition: ".2s" }}><span style={{ fontSize: 12 }} aria-hidden="true">{t.ic}</span>{t.lb}</button>)}
         <div style={{ flex: 1 }} />
         <div style={{ padding: "8px 6px", borderRadius: 6, background: "rgba(255,255,255,.012)", fontSize: 10, color: "#888", lineHeight: 1.9 }}>
-          <span aria-label="學校">📍</span> {d.target.school}<br /><span aria-label="課程數">📚</span> {d.courses.filter(c => c.on).length} 門<br /><span aria-label="戰績數">🏆</span> {d.recs.length} 筆<br /><span aria-label="金牌數">🥇</span> {d.recs.filter(r => r.tp === "gold").length}{d.contact?.line && <><br /><span aria-label="LINE">💬</span> {d.contact.line}</>}
+          <span aria-label="學校">📍</span> {d.target.school}<br /><span aria-label="課程數">📚</span> {d.courses.filter(c => c.on).length} 門<br /><span aria-label="戰績數">🏆</span> {d.recs.length} 筆<br /><span aria-label="金牌數">🥇</span> {d.recs.filter(r => r.tp === "gold").length}{d.contact?.line && <><br /><span aria-label="LINE">💬</span> {d.contact.line}</>}{d.contact?.email && <><br /><span aria-label="Email">✉</span> {d.contact.email.split('@')[0]}</>}
         </div>
       </nav>}
 
