@@ -339,5 +339,15 @@
       "t": "校方彈性選配",
       "d": "完整選單自由挑選組合"
     }
-  ]
+  ],
+  "contact": {
+    "line": "@funlearnbar",
+    "email": "thefunlearnbar@gmail.com",
+    "line_url": "https://line.me/ti/p/@funlearnbar"
+  },
+  "schedule": {
+    "kinder": "每堂 40 分鐘｜15:55–16:35 / 16:40–17:20",
+    "elementary": "每堂 70 分鐘｜16:25–17:35 / 17:40–18:50",
+    "note": "可依校方時段彈性調整"
+  }
 }
