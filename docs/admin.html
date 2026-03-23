@@ -132,16 +132,30 @@ function TabCourses({ d, set }) {
   const uc = (id, k, v) => set({ ...d, courses: d.courses.map(c => c.id === id ? { ...c, [k]: v } : c) });
   const add = gr => { const n = { id: `c${Date.now()}`, nm: "新課程", sb: "", gr, tk: "k", on: true, ds: "", tg: [], cp: [], eq: "" }; set({ ...d, courses: [...d.courses, n] }); setEd(n.id); };
   const del = id => { if (!confirm(`確定刪除「${d.courses.find(c=>c.id===id)?.nm}」？`)) return; set({ ...d, courses: d.courses.filter(x => x.id !== id) }); setEd(null); };
+  const dup = id => { const src = d.courses.find(c=>c.id===id); if(!src)return; const n = { ...JSON.parse(JSON.stringify(src)), id: `c${Date.now()}`, nm: src.nm + " (複製)" }; const idx = d.courses.findIndex(c=>c.id===id); const cs = [...d.courses]; cs.splice(idx+1,0,n); set({ ...d, courses: cs }); setEd(n.id); };
+  const move = (id, dir) => { const cs = [...d.courses]; const gr = cs.find(c=>c.id===id)?.gr; const grIdx = cs.filter(c=>c.gr===gr).map(c=>cs.indexOf(c)); const pos = grIdx.indexOf(cs.findIndex(c=>c.id===id)); if(dir==="up"&&pos>0){const a=grIdx[pos],b=grIdx[pos-1];[cs[a],cs[b]]=[cs[b],cs[a]]} if(dir==="down"&&pos<grIdx.length-1){const a=grIdx[pos],b=grIdx[pos+1];[cs[a],cs[b]]=[cs[b],cs[a]]} set({...d,courses:cs}); };
+  const togAll = (gr, on) => set({ ...d, courses: d.courses.map(c => c.gr === gr ? { ...c, on } : c) });
+  const aB = { background: "none", border: "none", cursor: "pointer", fontSize: 10, padding: "2px 4px", fontFamily: "inherit" };
   return <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-    {GR.map(g => { const gc = d.courses.filter(c => c.gr === g.id); return <div key={g.id}>
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7 }}><div style={{ width: 7, height: 7, borderRadius: 4, background: g.c }} /><span style={{ fontSize: 12, fontWeight: 700, color: g.c }}>{g.l}</span><span style={{ fontSize: 10, color: "#8a8a9a" }}>{gc.filter(c => c.on).length}/{gc.length}</span></div>
-      {gc.map(c => <div key={c.id} style={{ marginBottom: ed === c.id ? 6 : 3 }}>
+    {GR.map(g => { const gc = d.courses.filter(c => c.gr === g.id); const onN = gc.filter(c=>c.on).length; return <div key={g.id}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7 }}>
+        <div style={{ width: 7, height: 7, borderRadius: 4, background: g.c }} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: g.c }}>{g.l}</span>
+        <span style={{ fontSize: 10, color: "#8a8a9a" }}>{onN}/{gc.length}</span>
+        <div style={{ flex: 1 }} />
+        <button onClick={() => togAll(g.id, onN < gc.length)} title={onN < gc.length ? "全部開啟" : "全部關閉"} style={{ ...aB, color: "#8a8a9a", fontSize: 9 }}>{onN < gc.length ? "全開" : "全關"}</button>
+      </div>
+      {gc.map((c, ci) => <div key={c.id} style={{ marginBottom: ed === c.id ? 6 : 3 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 9px", borderRadius: 7, background: c.on ? "rgba(255,255,255,.03)" : "rgba(255,255,255,.008)", border: `1px solid rgba(255,255,255,${c.on ? ".05" : ".02"})`, opacity: c.on ? 1 : .3, transition: ".3s" }}>
           <div onClick={() => tog(c.id)} onKeyDown={e => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), tog(c.id))} role="switch" aria-checked={c.on} aria-label={`${c.nm} 開關`} tabIndex={0} style={{ width: 30, height: 16, borderRadius: 8, background: c.on ? G : "#333", cursor: "pointer", position: "relative", flexShrink: 0, transition: ".3s" }}><div style={{ width: 12, height: 12, borderRadius: 6, background: "#fff", position: "absolute", top: 2, left: c.on ? 16 : 2, transition: ".25s" }} /></div>
           <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 600, color: c.on ? "#eee" : "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nm}</div><div style={{ fontSize: 10, color: "#8a8a9a" }}>{c.sb}</div></div>
           <P c={TK[c.tk]?.c || "#888"}>{TK[c.tk]?.ic} {TK[c.tk]?.n}</P>
           {c.cp.length > 0 && <P c={G}>🏆{c.cp.length}</P>}
-          <button onClick={() => setEd(ed === c.id ? null : c.id)} aria-label={ed === c.id ? "收合編輯" : `編輯 ${c.nm}`} style={{ background: "none", border: "none", color: ed === c.id ? G : "#555", cursor: "pointer", fontSize: 12 }}>{ed === c.id ? "▲" : "✎"}</button>
+          <div style={{ display: "flex", gap: 1, flexShrink: 0 }}>
+            {ci > 0 && <button onClick={() => move(c.id,"up")} title="上移" style={{ ...aB, color: "#8a8a9a" }}>↑</button>}
+            {ci < gc.length-1 && <button onClick={() => move(c.id,"down")} title="下移" style={{ ...aB, color: "#8a8a9a" }}>↓</button>}
+            <button onClick={() => setEd(ed === c.id ? null : c.id)} aria-label={ed === c.id ? "收合編輯" : `編輯 ${c.nm}`} style={{ ...aB, color: ed === c.id ? G : "#8a8a9a" }}>{ed === c.id ? "▲" : "✎"}</button>
+          </div>
         </div>
         {ed === c.id && <div style={{ padding: "10px 12px", marginLeft: 0, marginTop: 3, borderRadius: 7, background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.04)", display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><F l="名稱" v={c.nm} fn={v => uc(c.id, "nm", v)} /><F l="副標" v={c.sb} fn={v => uc(c.id, "sb", v)} /></div>
@@ -149,7 +163,10 @@ function TabCourses({ d, set }) {
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><div style={{ width: 80, flexShrink: 0 }}><label style={{ fontSize: 10, color: "#888", display: "block", marginBottom: 2 }}>路線</label><select value={c.tk} onChange={e => uc(c.id, "tk", e.target.value)} aria-label="路線" style={iS}>{Object.entries(TK).map(([k, v]) => <option key={k} value={k}>{v.n}</option>)}</select></div><F l="器材" v={c.eq} fn={v => uc(c.id, "eq", v)} /></div>
           <F l="標籤（逗號分隔）" v={c.tg.join(", ")} fn={v => uc(c.id, "tg", v.split(",").map(s => s.trim()).filter(Boolean))} />
           <F l="對接競賽（逗號分隔）" v={c.cp.join(", ")} fn={v => uc(c.id, "cp", v.split(",").map(s => s.trim()).filter(Boolean))} />
-          <button onClick={() => del(c.id)} style={{ alignSelf: "flex-start", padding: "4px 10px", borderRadius: 5, border: "none", background: "rgba(200,50,50,.08)", color: "#e55", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>刪除此課程</button>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button onClick={() => dup(c.id)} style={{ padding: "4px 10px", borderRadius: 5, border: `1px solid ${G}20`, background: `${G}06`, color: G, fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>⧉ 複製此課程</button>
+            <button onClick={() => del(c.id)} style={{ padding: "4px 10px", borderRadius: 5, border: "none", background: "rgba(200,50,50,.08)", color: "#e55", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>刪除此課程</button>
+          </div>
         </div>}
       </div>)}
       <button onClick={() => add(g.id)} style={{ width: "100%", marginTop: 3, padding: "6px 0", borderRadius: 6, border: `1px dashed ${G}20`, background: `${G}05`, color: G, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>+ 新增</button>
@@ -304,6 +321,10 @@ function App() {
     tm.current = setTimeout(async () => {
       setSaving(true);
       const res = await db.set(sid, d);
+      // Sync school tab label when name changes
+      const label = (d.target?.school||"") + " " + (d.target?.dept||"");
+      const updated = schools.map(s => s.id === sid ? { ...s, name: label.trim() } : s);
+      if(JSON.stringify(updated) !== JSON.stringify(schools)){ setSchools(updated); await db.set("schools", updated); }
       setSaving(false);
       if (res === "quota") flash("⚠ 儲存空間已滿，請匯出 JSON 備份");
       else if (res === false) flash("⚠ 儲存失敗");
@@ -312,7 +333,7 @@ function App() {
   }, [d]);
 
   const flash = m => { setToast(m); setTimeout(() => setToast(null), 2500); };
-  const addSchool = async () => { const n = prompt("學校名稱："); if (!n?.trim()) return; const name = n.trim().slice(0, 50); const id = "s" + Date.now(); const nl = [...schools, { id, name }]; const nc = { ...SEED, target: { school: name, dept: "" } }; await db.set("schools", nl); await db.set(id, nc); setSchools(nl); setSid(id); setD(nc); flash("✓ " + name); };
+  const addSchool = async () => { const n = prompt("學校名稱："); if (!n?.trim()) return; const name = n.trim().slice(0, 50); const id = "s" + Date.now(); const nl = [...schools, { id, name }]; const nc = { ...JSON.parse(JSON.stringify(SEED)), target: { school: name, dept: "" } }; await db.set("schools", nl); await db.set(id, nc); setSchools(nl); setSid(id); setD(nc); flash("✓ " + name); };
   const swSchool = async id => { setLoading(true); let cfg = await db.get(id) || SEED; if(!cfg.contact)cfg.contact={line:'',email:'',line_url:''}; if(!cfg.schedule)cfg.schedule={kinder:'',elementary:'',note:''}; setD(cfg); setSid(id); setLoading(false); };
   const delSchool = async id => { if (schools.length < 2) return flash("至少保留一校"); if (!confirm("確定刪除此學校所有資料？")) return; await db.del(id); const nl = schools.filter(s => s.id !== id); await db.set("schools", nl); setSchools(nl); if (sid === id) swSchool(nl[0].id); flash("✓ 已刪除"); };
 
