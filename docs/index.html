@@ -1339,7 +1339,7 @@ document.body.style.opacity="1";
       return;
     }
     const params=new URLSearchParams(location.search);
-    const configUrl=params.get('config')||params.get('api');
+    let configUrl=params.get('config')||params.get('api');
     if(!configUrl)configUrl='config.json'; // Default to local config.json
     const res=await fetch(configUrl);
     if(!res.ok)return;
