@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-  <title>樂程坊 STEAM 提案管理系統</title>
-  <meta name="description" content="樂程坊 STEAM 課程提案管理後台 — 編輯課程、競賽戰績、學校設定並匯出提案資料。">
+  <title>樂程坊 AI × STEAM 提案管理系統</title>
+  <meta name="description" content="樂程坊 AI × STEAM 課程提案管理後台 — 編輯課程、競賽戰績、學校設定並匯出提案資料。">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0b0b14">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
@@ -80,10 +80,12 @@ const SEED = {
   ],
   hi: [
     { id: "h1", ic: "⚡", t: "K-6 完整路線", d: "三條主線環環相扣，不必東拼西湊" },
-    { id: "h2", ic: "⭐", t: "8+ 競賽出口", d: "每門課都有競賽對接，累積升學履歷" },
+    { id: "h2", ic: "⭐", t: "13+ 競賽出口", d: "每門課都有競賽對接，累積升學履歷" },
     { id: "h3", ic: "🔗", t: "課程綁定升級", d: "每門課是下一學年的基石" },
     { id: "h4", ic: "📦", t: "校方彈性選配", d: "完整選單自由挑選組合" },
   ],
+  contact: { line: "@funlearnbar", email: "thefunlearnbar@gmail.com", line_url: "https://line.me/ti/p/@funlearnbar" },
+  schedule: { kinder: "每堂 40 分鐘｜15:55–16:35 / 16:40–17:20", elementary: "每堂 70 分鐘｜16:25–17:35 / 17:40–18:50", note: "可依校方時段彈性調整" },
 };
 
 // ── DB Layer (localStorage) ──
@@ -115,6 +117,8 @@ function TabSchool({ d, set }) {
     <Sec t="目標學校"><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><F l="學校" v={d.target.school} fn={v => u("target.school", v)} ph="學校名稱" /><F l="部門" v={d.target.dept} fn={v => u("target.dept", v)} ph="國小部" /></div></Sec>
     <Sec t="首頁 HERO"><div style={{ display: "flex", flexDirection: "column", gap: 6 }}><F l="主標題" v={d.hero.title} fn={v => u("hero.title", v)} /><F l="金色強調" v={d.hero.accent} fn={v => u("hero.accent", v)} /><F l="副標" v={d.hero.sub} fn={v => u("hero.sub", v)} m /></div></Sec>
     <Sec t="品牌"><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><F l="中文" v={d.brand.name} fn={v => u("brand.name", v)} /><F l="英文" v={d.brand.en} fn={v => u("brand.en", v)} /></div><div style={{ marginTop: 6 }}><F l="Slogan" v={d.brand.slogan} fn={v => u("brand.slogan", v)} /></div></Sec>
+    <Sec t="聯絡資訊"><div style={{ display: "flex", flexDirection: "column", gap: 6 }}><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><F l="LINE ID" v={d.contact?.line||""} fn={v => u("contact.line", v)} ph="@funlearnbar" /><F l="LINE 連結" v={d.contact?.line_url||""} fn={v => u("contact.line_url", v)} ph="https://line.me/ti/p/@xxx" /></div><F l="Email" v={d.contact?.email||""} fn={v => u("contact.email", v)} ph="email@example.com" /></div></Sec>
+    <Sec t="課後班時段"><div style={{ display: "flex", flexDirection: "column", gap: 6 }}><F l="幼兒園" v={d.schedule?.kinder||""} fn={v => u("schedule.kinder", v)} ph="每堂 40 分鐘｜15:55–16:35" /><F l="小學" v={d.schedule?.elementary||""} fn={v => u("schedule.elementary", v)} ph="每堂 70 分鐘｜16:25–17:35" /><F l="備註" v={d.schedule?.note||""} fn={v => u("schedule.note", v)} ph="可依校方時段彈性調整" /></div></Sec>
     <Sec t="四大亮點">{d.hi.map((h, i) => <div key={h.id} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}><input value={h.ic} onChange={e => sH(i, "ic", e.target.value)} style={{ ...iS, width: 36, textAlign: "center", fontSize: 16, padding: 3 }} aria-label={`亮點 ${i+1} 圖示`} /><F v={h.t} fn={v => sH(i, "t", v)} /><F v={h.d} fn={v => sH(i, "d", v)} /></div>)}</Sec>
   </div>;
 }
@@ -276,7 +280,7 @@ function App() {
   useEffect(() => { (async () => {
     let list = await db.get("schools");
     if (!list?.length) { const id = "s" + Date.now(); list = [{ id, name: "再興幼兒園 國小部" }]; await db.set("schools", list); await db.set(id, SEED); }
-    setSchools(list); const cfg = await db.get(list[0].id); setD(cfg || SEED); setSid(list[0].id); setLoading(false);
+    setSchools(list); let cfg = await db.get(list[0].id) || SEED; if(!cfg.contact)cfg.contact={line:'',email:'',line_url:''}; if(!cfg.schedule)cfg.schedule={kinder:'',elementary:'',note:''}; setD(cfg); setSid(list[0].id); setLoading(false);
   })(); }, []);
 
   useEffect(() => {
@@ -294,7 +298,7 @@ function App() {
 
   const flash = m => { setToast(m); setTimeout(() => setToast(null), 2500); };
   const addSchool = async () => { const n = prompt("學校名稱："); if (!n?.trim()) return; const name = n.trim().slice(0, 50); const id = "s" + Date.now(); const nl = [...schools, { id, name }]; const nc = { ...SEED, target: { school: name, dept: "" } }; await db.set("schools", nl); await db.set(id, nc); setSchools(nl); setSid(id); setD(nc); flash("✓ " + name); };
-  const swSchool = async id => { setLoading(true); const cfg = await db.get(id); setD(cfg || SEED); setSid(id); setLoading(false); };
+  const swSchool = async id => { setLoading(true); let cfg = await db.get(id) || SEED; if(!cfg.contact)cfg.contact={line:'',email:'',line_url:''}; if(!cfg.schedule)cfg.schedule={kinder:'',elementary:'',note:''}; setD(cfg); setSid(id); setLoading(false); };
   const delSchool = async id => { if (schools.length < 2) return flash("至少保留一校"); if (!confirm("確定刪除此學校所有資料？")) return; await db.del(id); const nl = schools.filter(s => s.id !== id); await db.set("schools", nl); setSchools(nl); if (sid === id) swSchool(nl[0].id); flash("✓ 已刪除"); };
 
   const expJSON = () => { const b = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `${d.target.school || "proposal"}_config.json`; a.click(); URL.revokeObjectURL(a.href); flash("✓ 已匯出 JSON"); };
@@ -329,7 +333,7 @@ function App() {
     <header style={{ height: 46, display: "flex", alignItems: "center", padding: "0 12px", borderBottom: `1px solid ${G}12`, gap: 6, flexShrink: 0, background: `${G}03` }}>
       <a href="index.html" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }} title="查看提案網頁">
         <span style={{ fontFamily: "Outfit", fontSize: 14, fontWeight: 800, color: G }}>樂程坊</span>
-        <span style={{ fontSize: 9, color: "#8a8a9a" }}>提案系統</span>
+        <span style={{ fontSize: 9, color: "#8a8a9a" }}>AI × STEAM 提案系統</span>
       </a>
       <div style={{ width: 1, height: 18, background: "rgba(255,255,255,.06)", margin: "0 2px", flexShrink: 0 }} />
       {!mobile && <div style={{ display: "flex", gap: 2, flex: 1, overflow: "auto", alignItems: "center" }}>
@@ -359,7 +363,7 @@ function App() {
         {TABS.map(t => <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? "page" : undefined} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "8px 8px", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: tab === t.id ? `${G}0c` : "transparent", color: tab === t.id ? G : "#666", fontSize: 11, fontWeight: tab === t.id ? 700 : 500, transition: ".2s" }}><span style={{ fontSize: 12 }} aria-hidden="true">{t.ic}</span>{t.lb}</button>)}
         <div style={{ flex: 1 }} />
         <div style={{ padding: "8px 6px", borderRadius: 6, background: "rgba(255,255,255,.012)", fontSize: 10, color: "#888", lineHeight: 1.9 }}>
-          <span aria-label="學校">📍</span> {d.target.school}<br /><span aria-label="課程數">📚</span> {d.courses.filter(c => c.on).length} 門<br /><span aria-label="戰績數">🏆</span> {d.recs.length} 筆<br /><span aria-label="金牌數">🥇</span> {d.recs.filter(r => r.tp === "gold").length}
+          <span aria-label="學校">📍</span> {d.target.school}<br /><span aria-label="課程數">📚</span> {d.courses.filter(c => c.on).length} 門<br /><span aria-label="戰績數">🏆</span> {d.recs.length} 筆<br /><span aria-label="金牌數">🥇</span> {d.recs.filter(r => r.tp === "gold").length}{d.contact?.line && <><br /><span aria-label="LINE">💬</span> {d.contact.line}</>}
         </div>
       </nav>}
 
